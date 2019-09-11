@@ -1,0 +1,14 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>netcoreapp2.2</TargetFramework>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\AWorkFlow.ConsoleAction\AWorkFlow.ConsoleAction.csproj" />
+    <ProjectReference Include="..\AWorkFlow.Core\AWorkFlow.Core.csproj" />
+    <ProjectReference Include="..\AWorkFlow.InMemoryRepo\AWorkFlow.InMemoryRepo.csproj" />
+  </ItemGroup>
+
+</Project>

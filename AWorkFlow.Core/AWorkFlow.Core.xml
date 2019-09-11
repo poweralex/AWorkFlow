@@ -1,0 +1,362 @@
+<?xml version="1.0"?>
+<doc>
+    <assembly>
+        <name>AWorkFlow.Core</name>
+    </assembly>
+    <members>
+        <member name="T:AWorkFlow.Core.Models.ActionSettingDto">
+            <summary>
+            action setting dto
+            </summary>
+        </member>
+        <member name="P:AWorkFlow.Core.Models.ActionSettingDto.Code">
+            <summary>
+            unique action code
+            </summary>
+        </member>
+        <member name="P:AWorkFlow.Core.Models.ActionSettingDto.ActionType">
+            <summary>
+            action type
+            </summary>
+        </member>
+        <member name="P:AWorkFlow.Core.Models.ActionSettingDto.Sequence">
+            <summary>
+            execute sequence
+            </summary>
+        </member>
+        <member name="P:AWorkFlow.Core.Models.ActionSettingDto.Settings">
+            <summary>
+            action settings depends on action type
+            </summary>
+        </member>
+        <member name="T:AWorkFlow.Core.Models.ResultIndicator">
+            <summary>
+            result indicator setting
+            </summary>
+        </member>
+        <member name="P:AWorkFlow.Core.Models.ResultIndicator.ActualExp">
+            <summary>
+            actual value
+            </summary>
+        </member>
+        <member name="P:AWorkFlow.Core.Models.ResultIndicator.ExpectedExps">
+            <summary>
+            expected value
+            </summary>
+        </member>
+        <member name="P:AWorkFlow.Core.Models.ResultIndicator.Not">
+            <summary>
+            logical negation
+            </summary>
+        </member>
+        <member name="P:AWorkFlow.Core.Models.ResultIndicator.IsSuccess">
+            <summary>
+            treat as success while compare pass
+            </summary>
+        </member>
+        <member name="P:AWorkFlow.Core.Models.ResultIndicator.IsFail">
+            <summary>
+            treat as fail while compare pass
+            </summary>
+        </member>
+        <member name="M:AWorkFlow.Core.Models.ResultIndicator.Indicate(AWorkFlow.Core.Providers.Interfaces.IExpressionProvider)">
+            <summary>
+            execute indicator
+            </summary>
+            <param name="expressionProvider"></param>
+            <returns></returns>
+        </member>
+        <member name="T:AWorkFlow.Core.Models.ExecutionResultDto">
+            <summary>
+            execution result dto
+            </summary>
+        </member>
+        <member name="P:AWorkFlow.Core.Models.ExecutionResultDto.ExecuteArguments">
+            <summary>
+            execute arguments
+            </summary>
+        </member>
+        <member name="P:AWorkFlow.Core.Models.ExecutionResultDto.ExecuteResult">
+            <summary>
+            execute result
+            </summary>
+        </member>
+        <member name="P:AWorkFlow.Core.Models.ExecutionResultDto.ExecutionTime">
+            <summary>
+            execution time
+            </summary>
+        </member>
+        <member name="P:AWorkFlow.Core.Models.ExecutionResultDto.Success">
+            <summary>
+            if execution succeeded
+            </summary>
+        </member>
+        <member name="P:AWorkFlow.Core.Models.ExecutionResultDto.Fail">
+            <summary>
+            if execution failed
+            </summary>
+        </member>
+        <member name="T:AWorkFlow.Core.Models.ExpressionDto">
+            <summary>
+            expression model
+            </summary>
+        </member>
+        <member name="P:AWorkFlow.Core.Models.ExpressionDto.Expression">
+            <summary>
+            whole expression
+            </summary>
+        </member>
+        <member name="P:AWorkFlow.Core.Models.ExpressionDto.Key">
+            <summary>
+            whole key
+            </summary>
+        </member>
+        <member name="P:AWorkFlow.Core.Models.ExpressionDto.CurrentKey">
+            <summary>
+            first key
+            </summary>
+        </member>
+        <member name="P:AWorkFlow.Core.Models.ExpressionDto.ArrayKey">
+            <summary>
+            key for array
+            </summary>
+        </member>
+        <member name="P:AWorkFlow.Core.Models.ExpressionDto.Index">
+            <summary>
+            index of array
+            </summary>
+        </member>
+        <member name="P:AWorkFlow.Core.Models.ExpressionDto.IsArray">
+            <summary>
+            is current key an array
+            </summary>
+        </member>
+        <member name="P:AWorkFlow.Core.Models.ExpressionDto.SubExpression">
+            <summary>
+            next expression without current key
+            </summary>
+        </member>
+        <member name="M:AWorkFlow.Core.Models.ExpressionDto.#ctor(System.String,System.String)">
+            <summary>
+            constructor
+            </summary>
+            <param name="expression"></param>
+            <param name="key"></param>
+        </member>
+        <member name="P:AWorkFlow.Core.Models.WorkDto.BeginTime">
+            <summary>
+            begin time
+            </summary>
+        </member>
+        <member name="P:AWorkFlow.Core.Models.WorkDto.EndTime">
+            <summary>
+            end time
+            </summary>
+        </member>
+        <member name="T:AWorkFlow.Core.Models.WorkFlowDto">
+            <summary>
+            work flow config dto
+            </summary>
+        </member>
+        <member name="P:AWorkFlow.Core.Models.WorkFlowDto.Name">
+            <summary>
+            workflow name
+            </summary>
+        </member>
+        <member name="P:AWorkFlow.Core.Models.WorkFlowDto.Category">
+            <summary>
+            workflow category
+            </summary>
+        </member>
+        <member name="P:AWorkFlow.Core.Models.WorkFlowDto.Version">
+            <summary>
+            version number
+            </summary>
+        </member>
+        <member name="P:AWorkFlow.Core.Models.WorkFlowDto.Selectors">
+            <summary>
+            selectors which will run first to determine if this workflow is good to go
+            </summary>
+        </member>
+        <member name="P:AWorkFlow.Core.Models.WorkFlowDto.PreActions">
+            <summary>
+            pre-actions to run before first step(eg. preparations, startups)
+            </summary>
+        </member>
+        <member name="P:AWorkFlow.Core.Models.WorkFlowDto.AfterActions">
+            <summary>
+            after-actions to run after last step(eg. cleanup or notifications)
+            </summary>
+        </member>
+        <member name="P:AWorkFlow.Core.Models.WorkFlowDto.DefaultFailureHandlers">
+            <summary>
+            actions to run while any step fails if not IgnoreDefaultFailureHandlers
+            </summary>
+        </member>
+        <member name="P:AWorkFlow.Core.Models.WorkFlowDto.OutputExp">
+            <summary>
+            output expression
+            </summary>
+        </member>
+        <member name="P:AWorkFlow.Core.Models.WorkFlowDto.Steps">
+            <summary>
+            work flow steps
+            </summary>
+        </member>
+        <member name="P:AWorkFlow.Core.Models.WorkFlowDto.Flows">
+            <summary>
+            work flow directions
+            </summary>
+        </member>
+        <member name="T:AWorkFlow.Core.Models.WorkFlowStepDto">
+            <summary>
+            work flow step config dto
+            </summary>
+        </member>
+        <member name="P:AWorkFlow.Core.Models.WorkFlowStepDto.Code">
+            <summary>
+            unique code to locate this step
+            </summary>
+        </member>
+        <member name="P:AWorkFlow.Core.Models.WorkFlowStepDto.TagExps">
+            <summary>
+            tag expressions represents this step
+            </summary>
+        </member>
+        <member name="P:AWorkFlow.Core.Models.WorkFlowStepDto.DataExp">
+            <summary>
+            data expression represents this step
+            </summary>
+        </member>
+        <member name="P:AWorkFlow.Core.Models.WorkFlowStepDto.GroupExp">
+            <summary>
+            group expression
+            </summary>
+        </member>
+        <member name="P:AWorkFlow.Core.Models.WorkFlowStepDto.ByQty">
+            <summary>
+            indicates if this step goes by qty
+            </summary>
+        </member>
+        <member name="P:AWorkFlow.Core.Models.WorkFlowStepDto.MatchQtyExp">
+            <summary>
+            match qty expression
+            </summary>
+        </member>
+        <member name="P:AWorkFlow.Core.Models.WorkFlowStepDto.MaxTimesToRun">
+            <summary>
+            max times that allow to run (if executions reach that count, this step goes fail)
+            </summary>
+        </member>
+        <member name="P:AWorkFlow.Core.Models.WorkFlowStepDto.IgnoreDefaultFailureHandlers">
+            <summary>
+            indicates if default failure handler will be executed while this step fails
+            </summary>
+        </member>
+        <member name="P:AWorkFlow.Core.Models.WorkFlowStepDto.IsBegin">
+            <summary>
+            indicates if this is the first step
+            </summary>
+        </member>
+        <member name="P:AWorkFlow.Core.Models.WorkFlowStepDto.IsEnd">
+            <summary>
+            indicates if this is the last step
+            </summary>
+        </member>
+        <member name="P:AWorkFlow.Core.Models.WorkFlowStepDto.IsManual">
+            <summary>
+            indicates if this is the manual step(execute and submit success or fail by outside)
+            </summary>
+        </member>
+        <member name="P:AWorkFlow.Core.Models.WorkFlowStepDto.OutputExp">
+            <summary>
+            output expression
+            </summary>
+        </member>
+        <member name="P:AWorkFlow.Core.Models.WorkFlowStepDto.PreActions">
+            <summary>
+            pre-actions to run before actions
+            </summary>
+        </member>
+        <member name="P:AWorkFlow.Core.Models.WorkFlowStepDto.Actions">
+            <summary>
+            actions of this step
+            </summary>
+        </member>
+        <member name="P:AWorkFlow.Core.Models.WorkFlowStepDto.AfterActions">
+            <summary>
+            after-actions to run after actions
+            </summary>
+        </member>
+        <member name="T:AWorkFlow.Core.Models.WorkFlowDirectionDto">
+            <summary>
+            work flow direction config dto
+            </summary>
+        </member>
+        <member name="P:AWorkFlow.Core.Models.WorkFlowDirectionDto.StepCode">
+            <summary>
+            current step code
+            </summary>
+        </member>
+        <member name="P:AWorkFlow.Core.Models.WorkFlowDirectionDto.NextStepCode">
+            <summary>
+            next step code
+            </summary>
+        </member>
+        <member name="P:AWorkFlow.Core.Models.WorkFlowDirectionDto.LoopByExp">
+            <summary>
+            indicates if next step will be post by loop
+            </summary>
+        </member>
+        <member name="P:AWorkFlow.Core.Models.WorkFlowDirectionDto.NextOn">
+            <summary>
+            when to post next step
+            </summary>
+        </member>
+        <member name="T:AWorkFlow.Core.Models.WorkFlowNextOn">
+            <summary>
+            post next step condition
+            </summary>
+        </member>
+        <member name="F:AWorkFlow.Core.Models.WorkFlowNextOn.OnSuccess">
+            <summary>
+            on step success
+            </summary>
+        </member>
+        <member name="F:AWorkFlow.Core.Models.WorkFlowNextOn.OnFail">
+            <summary>
+            on step fail
+            </summary>
+        </member>
+        <member name="F:AWorkFlow.Core.Models.WorkFlowNextOn.OnPartialSuccess">
+            <summary>
+            on part(qty) of step success
+            </summary>
+        </member>
+        <member name="F:AWorkFlow.Core.Models.WorkFlowNextOn.OnPartialFail">
+            <summary>
+            on part(qty) of step fail
+            </summary>
+        </member>
+        <member name="F:AWorkFlow.Core.Models.WorkFlowNextOn.OnGroupAllSuccess">
+            <summary>
+            on all of same group success
+            </summary>
+        </member>
+        <member name="F:AWorkFlow.Core.Models.WorkFlowNextOn.OnGroupAllFail">
+            <summary>
+            on all of same group fail
+            </summary>
+        </member>
+        <member name="F:AWorkFlow.Core.Models.WorkFlowNextOn.OnGroupAnySuccess">
+            <summary>
+            on any of same group success
+            </summary>
+        </member>
+        <member name="F:AWorkFlow.Core.Models.WorkFlowNextOn.OnGroupAnyFail">
+            <summary>
+            on any of same group fail
+            </summary>
+        </member>
+    </members>
+</doc>
