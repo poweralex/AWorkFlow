@@ -15,12 +15,17 @@ namespace AWorkFlow.Core.Providers
             _workFlowRepository = workFlowRepository;
         }
 
+        public Task<WorkFlowDto> GetWorkFlow(string id)
+        {
+            throw new NotImplementedException();
+        }
+
         public Task<IEnumerable<WorkFlowDto>> GetWorkingFlows(string category)
         {
             throw new NotImplementedException();
         }
 
-        public Task<IEnumerable<WorkFlowDto>> SearchWorkFlow(string category)
+        public Task<IEnumerable<WorkFlowDto>> SearchWorkFlow(string category, string code, int? version)
         {
             throw new NotImplementedException();
         }

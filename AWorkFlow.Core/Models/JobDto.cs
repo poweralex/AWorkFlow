@@ -19,6 +19,8 @@ namespace AWorkFlow.Core.Models
         public string WorkId { get; set; }
         public string WorkStepId { get; set; }
         public DateTime ActiveTime { get; set; }
+        public bool IsManual { get; set; }
+        public int? MatchQty { get; set; }
         public bool Completed { get; set; }
         public bool Success { get; set; }
         public bool Fail { get; set; }

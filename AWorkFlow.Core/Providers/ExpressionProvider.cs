@@ -18,5 +18,10 @@ namespace AWorkFlow.Core.Providers
         {
             throw new NotImplementedException();
         }
+
+        public Task<T> Format<T>(string expression)
+        {
+            throw new NotImplementedException();
+        }
     }
 }

@@ -15,6 +15,8 @@ namespace AWorkFlow.Core.Providers.Interfaces
         Task<WorkDto> Restart(string id, string user);
         Task<WorkDto> Retry(string id, string user);
 
+        Task FinishWork(WorkDto work, bool success, string user);
         Task PostStep(WorkStepDto workStep, string user);
+        Task FinishStep(WorkStepDto workStep, bool success, string user);
     }
 }

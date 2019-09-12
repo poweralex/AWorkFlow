@@ -34,6 +34,16 @@ namespace AWorkFlow.Core.Providers
             _executorProvider = executorProvider;
         }
 
+        public Task FinishStep(WorkStepDto workStep, bool success, string user)
+        {
+            throw new NotImplementedException();
+        }
+
+        public Task FinishWork(WorkDto work, bool success, string user)
+        {
+            throw new NotImplementedException();
+        }
+
         /// <summary>
         /// get a work by id
         /// </summary>
@@ -54,6 +64,11 @@ namespace AWorkFlow.Core.Providers
             // hold the work
             await _workRepository.HoldWork(id, user);
             return await _workRepository.GetWork(id);
+        }
+
+        public Task PostStep(WorkStepDto workStep, string user)
+        {
+            throw new NotImplementedException();
         }
 
         public Task<WorkDto> Restart(string id, string user)
