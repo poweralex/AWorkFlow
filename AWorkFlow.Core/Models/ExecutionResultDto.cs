@@ -20,6 +20,10 @@ namespace AWorkFlow.Core.Models
         /// </summary>
         public TimeSpan ExecutionTime { get; set; }
         /// <summary>
+        /// if execution completed
+        /// </summary>
+        public bool Completed { get; set; }
+        /// <summary>
         /// if execution succeeded
         /// </summary>
         public bool Success { get; set; }

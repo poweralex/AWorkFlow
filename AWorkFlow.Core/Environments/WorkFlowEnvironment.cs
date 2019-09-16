@@ -16,6 +16,7 @@ namespace AWorkFlow.Core.Environments
             builder.RegisterType<WorkFlowProvider>().As<IWorkFlowProvider>();
             builder.RegisterType<WorkProvider>().As<IWorkProvider>();
             builder.RegisterType<JobProvider>().As<IJobProvider>();
+            builder.RegisterType<ExecutorProvider>().As<IExecutorProvider>();
             container = null;
         }
 

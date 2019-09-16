@@ -29,6 +29,11 @@
             action settings depends on action type
             </summary>
         </member>
+        <member name="P:AWorkFlow.Core.Models.ActionSettingDto.Indicators">
+            <summary>
+            result indicator(s)
+            </summary>
+        </member>
         <member name="T:AWorkFlow.Core.Models.ResultIndicator">
             <summary>
             result indicator setting
@@ -84,6 +89,11 @@
         <member name="P:AWorkFlow.Core.Models.ExecutionResultDto.ExecutionTime">
             <summary>
             execution time
+            </summary>
+        </member>
+        <member name="P:AWorkFlow.Core.Models.ExecutionResultDto.Completed">
+            <summary>
+            if execution completed
             </summary>
         </member>
         <member name="P:AWorkFlow.Core.Models.ExecutionResultDto.Success">
@@ -143,6 +153,51 @@
             <param name="expression"></param>
             <param name="key"></param>
         </member>
+        <member name="T:AWorkFlow.Core.Models.JobDto">
+            <summary>
+            job dto
+            </summary>
+        </member>
+        <member name="P:AWorkFlow.Core.Models.JobDto.Id">
+            <summary>
+            job unique id
+            </summary>
+        </member>
+        <member name="P:AWorkFlow.Core.Models.JobDto.JobType">
+            <summary>
+            job type
+            </summary>
+        </member>
+        <member name="T:AWorkFlow.Core.Models.JobTypes">
+            <summary>
+            job types
+            </summary>
+        </member>
+        <member name="F:AWorkFlow.Core.Models.JobTypes.WorkPreAction">
+            <summary>
+            PreAction of a work
+            </summary>
+        </member>
+        <member name="F:AWorkFlow.Core.Models.JobTypes.WorkAfterAction">
+            <summary>
+            AfterAction of a work
+            </summary>
+        </member>
+        <member name="F:AWorkFlow.Core.Models.JobTypes.StepPreAction">
+            <summary>
+            PreAction of a step
+            </summary>
+        </member>
+        <member name="F:AWorkFlow.Core.Models.JobTypes.StepAction">
+            <summary>
+            Action of a step
+            </summary>
+        </member>
+        <member name="F:AWorkFlow.Core.Models.JobTypes.StepAfterAction">
+            <summary>
+            AfterAction of a step
+            </summary>
+        </member>
         <member name="P:AWorkFlow.Core.Models.WorkDto.BeginTime">
             <summary>
             begin time
@@ -153,14 +208,22 @@
             end time
             </summary>
         </member>
+        <member name="M:AWorkFlow.Core.Models.WorkDto.PostStep(AWorkFlow.Core.Repositories.Interfaces.IJobRepository,AWorkFlow.Core.Models.WorkStepDto,AWorkFlow.Core.Models.WorkFlowDirectionDto)">
+            <summary>
+            post next step(s) by direction
+            </summary>
+            <param name="currentStep"></param>
+            <param name="nextStepDirection"></param>
+            <returns></returns>
+        </member>
         <member name="T:AWorkFlow.Core.Models.WorkFlowDto">
             <summary>
             work flow config dto
             </summary>
         </member>
-        <member name="P:AWorkFlow.Core.Models.WorkFlowDto.Name">
+        <member name="P:AWorkFlow.Core.Models.WorkFlowDto.Code">
             <summary>
-            workflow name
+            workflow code
             </summary>
         </member>
         <member name="P:AWorkFlow.Core.Models.WorkFlowDto.Category">
@@ -170,7 +233,7 @@
         </member>
         <member name="P:AWorkFlow.Core.Models.WorkFlowDto.Version">
             <summary>
-            version number
+            version number of the code
             </summary>
         </member>
         <member name="P:AWorkFlow.Core.Models.WorkFlowDto.Selectors">
@@ -223,7 +286,7 @@
             tag expressions represents this step
             </summary>
         </member>
-        <member name="P:AWorkFlow.Core.Models.WorkFlowStepDto.DataExp">
+        <member name="P:AWorkFlow.Core.Models.WorkFlowStepDto.TagDataExp">
             <summary>
             data expression represents this step
             </summary>
@@ -268,7 +331,7 @@
             indicates if this is the manual step(execute and submit success or fail by outside)
             </summary>
         </member>
-        <member name="P:AWorkFlow.Core.Models.WorkFlowStepDto.OutputExp">
+        <member name="P:AWorkFlow.Core.Models.WorkFlowStepDto.OutputExps">
             <summary>
             output expression
             </summary>
@@ -357,6 +420,103 @@
             <summary>
             on any of same group fail
             </summary>
+        </member>
+        <member name="M:AWorkFlow.Core.Providers.ExpressionProvider.GetExpressions(System.String)">
+            <summary>
+            take expression(s) from input
+            </summary>
+            <param name="input"></param>
+            <returns></returns>
+        </member>
+        <member name="T:AWorkFlow.Core.Providers.Interfaces.IJobProvider">
+            <summary>
+            provides job operations
+            </summary>
+        </member>
+        <member name="M:AWorkFlow.Core.Providers.Interfaces.IJobProvider.ListJobsToDo(System.Nullable{System.Int32})">
+            <summary>
+            list job(s) to do
+            </summary>
+            <param name="maxCount"></param>
+            <returns></returns>
+        </member>
+        <member name="M:AWorkFlow.Core.Providers.Interfaces.IJobProvider.LockJob(System.String,System.String,System.Nullable{System.TimeSpan},System.String)">
+            <summary>
+            lock a job
+            </summary>
+            <param name="id"></param>
+            <param name="key"></param>
+            <param name="lockTime"></param>
+            <param name="user"></param>
+            <returns></returns>
+        </member>
+        <member name="M:AWorkFlow.Core.Providers.Interfaces.IJobProvider.UnLockJob(System.String,System.String,System.String)">
+            <summary>
+            unlock a job
+            </summary>
+            <param name="id"></param>
+            <param name="key"></param>
+            <param name="user"></param>
+            <returns></returns>
+        </member>
+        <member name="M:AWorkFlow.Core.Providers.Interfaces.IJobProvider.GetJob(System.String)">
+            <summary>
+            get a job by lock key
+            </summary>
+            <param name="key"></param>
+            <returns></returns>
+        </member>
+        <member name="M:AWorkFlow.Core.Providers.Interfaces.IJobProvider.Execute(AWorkFlow.Core.Models.JobDto,System.String)">
+            <summary>
+            execute a job
+            </summary>
+            <param name="job"></param>
+            <param name="user"></param>
+            <returns></returns>
+        </member>
+        <member name="M:AWorkFlow.Core.Providers.Interfaces.IJobProvider.PostJob(AWorkFlow.Core.Models.JobDto,System.String)">
+            <summary>
+            post a new job
+            </summary>
+            <param name="job"></param>
+            <param name="user"></param>
+            <returns></returns>
+        </member>
+        <member name="M:AWorkFlow.Core.Providers.JobProvider.Execute(AWorkFlow.Core.Models.JobDto,System.String)">
+            <summary>
+            execute a job, 
+            </summary>
+            <param name="job"></param>
+            <param name="user"></param>
+            <returns></returns>
+        </member>
+        <member name="T:AWorkFlow.Core.Providers.WorkProvider">
+            <summary>
+            provides operations related to work(s)
+            </summary>
+        </member>
+        <member name="M:AWorkFlow.Core.Providers.WorkProvider.#ctor(AWorkFlow.Core.Repositories.Interfaces.IWorkRepository,AWorkFlow.Core.Providers.Interfaces.IWorkFlowProvider,AWorkFlow.Core.Providers.Interfaces.IJobProvider,AWorkFlow.Core.Providers.Interfaces.IExecutorProvider)">
+            <summary>
+            constructor
+            </summary>
+            <param name="workRepository"></param>
+            <param name="workFlowProvider"></param>
+            <param name="jobProvider"></param>
+            <param name="executorProvider"></param>
+        </member>
+        <member name="M:AWorkFlow.Core.Providers.WorkProvider.GetWork(System.String)">
+            <summary>
+            get a work by id
+            </summary>
+            <param name="id"></param>
+            <returns></returns>
+        </member>
+        <member name="M:AWorkFlow.Core.Providers.WorkProvider.Hold(System.String,System.String)">
+            <summary>
+            put a work on hold
+            </summary>
+            <param name="id"></param>
+            <returns></returns>
         </member>
     </members>
 </doc>

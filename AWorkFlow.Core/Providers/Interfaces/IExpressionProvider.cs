@@ -1,5 +1,4 @@
 ﻿using AWorkFlow.Core.Models;
-using System.Collections.Generic;
 using System.Threading.Tasks;
 
 namespace AWorkFlow.Core.Providers.Interfaces
@@ -8,7 +7,6 @@ namespace AWorkFlow.Core.Providers.Interfaces
     {
         ArgumentsDto Arguments { get; }
 
-        Task<string> Format(string expression);
-        Task<T> Format<T>(string expression);
+        Task<ExpressionResultDto> Format(string expression);
     }
 }

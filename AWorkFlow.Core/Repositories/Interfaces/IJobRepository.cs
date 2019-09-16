@@ -8,8 +8,9 @@ namespace AWorkFlow.Core.Repositories.Interfaces
     public interface IJobRepository
     {
         Task<bool> InsertJob(JobDto job);
+        Task<bool> InsertJobs(IEnumerable<JobDto> jobs);
         Task<bool> SaveJobResult(JobDto job, IEnumerable<ExecutionResultDto> results, string user);
-        Task<bool> FinishJob(string id);
+        Task<bool> FinishJob(string id, bool success, bool fail);
         Task<bool> LockJob(string id, string key, TimeSpan? lockTime);
         Task<bool> UnLockJob(string id, string key);
         Task<JobDto> GetJob(string id);

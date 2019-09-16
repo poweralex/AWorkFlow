@@ -1,5 +1,6 @@
 ﻿using AWorkFlow.Core.Extensions;
 using AWorkFlow.Core.Models;
+using AWorkFlow.Core.Models.Jobs;
 using AWorkFlow.Core.Providers.Interfaces;
 using AWorkFlow.Core.Repositories.Interfaces;
 using System;
@@ -133,10 +134,10 @@ namespace AWorkFlow.Core.Providers
                 var insertResult = await _workRepository.InsertWork(work, user);
                 works.Add(work);
                 // post a job for pre-action(s)
-                var postJobResult = await _jobProvider.PostJob(new JobDto
+                var postJobResult = await _jobProvider.PostJob(new WorkPreActionJob
                 {
+                    Work = work,
                     Id = Guid.NewGuid().ToString(),
-                    JobType = JobTypes.WorkPreAction,
                     Actions = workflow.PreActions
                 }, user);
             }

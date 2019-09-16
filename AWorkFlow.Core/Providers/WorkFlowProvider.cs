@@ -1,8 +1,8 @@
 ﻿using AWorkFlow.Core.Models;
 using AWorkFlow.Core.Providers.Interfaces;
 using AWorkFlow.Core.Repositories.Interfaces;
-using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading.Tasks;
 
 namespace AWorkFlow.Core.Providers
@@ -15,24 +15,27 @@ namespace AWorkFlow.Core.Providers
             _workFlowRepository = workFlowRepository;
         }
 
-        public Task<WorkFlowDto> GetWorkFlow(string id)
-        {
-            throw new NotImplementedException();
-        }
-
         public Task<IEnumerable<WorkFlowDto>> GetWorkingFlows(string category)
         {
-            throw new NotImplementedException();
+            return _workFlowRepository.GetWorkingFlow(category);
         }
 
         public Task<IEnumerable<WorkFlowDto>> SearchWorkFlow(string category, string code, int? version)
         {
-            throw new NotImplementedException();
+            return _workFlowRepository.SearchWorkFlow(category, code, version);
         }
 
-        public Task<WorkFlowDto> SetWorkFLow(WorkFlowDto workFlow)
+        public async Task<WorkFlowDto> SetWorkFLow(WorkFlowDto workFlow)
         {
-            throw new NotImplementedException();
+            var res = await _workFlowRepository.SaveWorkFlow(workFlow);
+            if (res)
+            {
+                return _workFlowRepository.SearchWorkFlow(workFlow.Category, workFlow.Code, null).Result.FirstOrDefault();
+            }
+            else
+            {
+                return null;
+            }
         }
     }
 }

@@ -27,12 +27,14 @@ namespace AWorkFlow.Tester
                 {
                     new ActionSettingDto
                     {
+                         ActionType = "console",
                         Indicators = new List<ResultIndicator>
                         {
                             new ResultIndicator
                             {
                                 ActualExp = "{{input.salesChannel}}",
-                                ExpectedExps = new List<string>{ "yuepai" }
+                                ExpectedExps = new List<string>{ "yuepai" },
+                                IsSuccess = true
                             }
                         }
                     }
@@ -112,17 +114,19 @@ namespace AWorkFlow.Tester
             {
                 new ActionSettingDto
                 {
+                    ActionType = "console",
                     Indicators = new List<ResultIndicator>
                     {
                         new ResultIndicator
                         {
                             ActualExp = "{{input.salesChannel}}",
-                            ExpectedExps = new List<string>{ "Cimpress-Shanghai" }
+                            ExpectedExps = new List<string>{ "Cimpress-Shanghai" },
+                            IsSuccess = true
                         }
                     }
                 }
             };
-            object startData = new { };
+            object startData = new { salesChannel = "yuepai" };
             #endregion
 
             // init workflow.core

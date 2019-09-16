@@ -68,7 +68,7 @@ namespace AWorkFlow.Core.Models
             var actual = expressionProvider.Format(ActualExp).Result;
             var expected = ExpectedExps.Select(x => expressionProvider.Format(x).Result);
 
-            var match = expected.Any(x => string.Equals(actual, x, StringComparison.CurrentCultureIgnoreCase));
+            var match = expected.Any(x => string.Equals(actual.ResultJson, x.ResultJson, StringComparison.CurrentCultureIgnoreCase));
             if (Not)
             {
                 match = !match;

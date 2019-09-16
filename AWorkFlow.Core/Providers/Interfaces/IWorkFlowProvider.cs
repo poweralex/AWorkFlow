@@ -9,6 +9,5 @@ namespace AWorkFlow.Core.Providers.Interfaces
         Task<IEnumerable<WorkFlowDto>> GetWorkingFlows(string category);
         Task<WorkFlowDto> SetWorkFLow(WorkFlowDto workFlow);
         Task<IEnumerable<WorkFlowDto>> SearchWorkFlow(string category, string code, int? version);
-        Task<WorkFlowDto> GetWorkFlow(string id);
     }
 }
