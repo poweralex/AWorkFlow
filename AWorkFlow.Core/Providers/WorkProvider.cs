@@ -129,7 +129,9 @@ namespace AWorkFlow.Core.Providers
                     WorkId = Guid.NewGuid().ToString(),
                     WorkFlowCode = workflow.Code,
                     WorkFlowVersion = workflow.Version,
-                    BeginTime = DateTime.UtcNow
+                    WorkFlow = workflow,
+                    BeginTime = DateTime.UtcNow,
+                    Arguments = expressionProvider.Arguments
                 };
                 var insertResult = await _workRepository.InsertWork(work, user);
                 works.Add(work);

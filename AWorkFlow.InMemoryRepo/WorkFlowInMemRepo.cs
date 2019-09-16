@@ -7,7 +7,7 @@ using System.Threading.Tasks;
 
 namespace AWorkFlow.InMemoryRepo
 {
-    public class WorkFlowInMemRepo : RepoBase<WorkFlowDto>, IWorkFlowRepository
+    public class WorkFlowInMemRepo : IWorkFlowRepository
     {
         static readonly object lockObj = new object();
         static readonly List<WorkFlowDto> _workFlows = new List<WorkFlowDto>();
