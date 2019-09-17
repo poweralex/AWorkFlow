@@ -35,7 +35,8 @@ namespace AWorkFlow.Core.Providers
             }
             // get job by key
             var jobToDo = await GetJob(key);
-            var nextJobs = await job.Execute(_jobRepository, user);
+            var nextJobs = await job.Execute();
+            await _jobRepository.InsertJobs(nextJobs);
             await _jobRepository.UnLockJob(job.Id, key);
             return nextJobs;
         }

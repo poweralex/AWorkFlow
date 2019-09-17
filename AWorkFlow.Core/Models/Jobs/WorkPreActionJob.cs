@@ -15,10 +15,10 @@ namespace AWorkFlow.Core.Models.Jobs
             JobType = JobTypes.WorkPreAction;
         }
 
-        internal override async Task<IEnumerable<JobDto>> AfterSuccess(IJobRepository jobRepository, string user)
+        internal override async Task<IEnumerable<JobDto>> AfterSuccess()
         {
             // post first step
-            var nextJobs = await Work.PostStep(jobRepository, null, null);
+            var nextJobs = await Work.PostStep(null, null);
             return nextJobs;
         }
     }

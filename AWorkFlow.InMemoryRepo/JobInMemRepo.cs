@@ -85,9 +85,9 @@ namespace AWorkFlow.InMemoryRepo
             }
         }
 
-        public Task<IEnumerable<JobDto>> ListJobsToDo(int? maxCount)
+        public async Task<IEnumerable<JobDto>> ListJobsToDo(int? maxCount)
         {
-            throw new NotImplementedException();
+            return _jobs.Where(x => !x.Completed).Where(x => !lockedJobs.Any(j => j.Value.Id == x.Id)).ToList();
         }
 
         public Task<bool> LockJob(string id, string key, TimeSpan? lockTime)
@@ -123,11 +123,6 @@ namespace AWorkFlow.InMemoryRepo
             {
                 return Task.FromResult(false);
             }
-        }
-
-        public Task<bool> SaveJobResult(JobDto job, IEnumerable<ExecutionResultDto> results, string user)
-        {
-            throw new NotImplementedException();
         }
 
         public Task<bool> UnLockJob(string id, string key)

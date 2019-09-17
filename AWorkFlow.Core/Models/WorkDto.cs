@@ -27,10 +27,10 @@ namespace AWorkFlow.Core.Models
         public DateTime? EndTime { get; set; }
         public ArgumentsDto Arguments { get; set; }
         public string Status { get; set; }
-        public List<WorkStatusDto> Statuses { get; set; }
+        public List<WorkStatusDto> Statuses { get; set; } = new List<WorkStatusDto>();
         //public List<WorkStepGroupDto> WorkStepGroups { get; set; }
-        public List<WorkStepDto> WorkSteps { get; set; }
-        public List<WorkDirectionDto> WorkDirections { get; set; }
+        public List<WorkStepDto> WorkSteps { get; set; } = new List<WorkStepDto>();
+        public List<WorkDirectionDto> WorkDirections { get; set; } = new List<WorkDirectionDto>();
 
         /// <summary>
         /// post next step(s) by direction
@@ -38,7 +38,7 @@ namespace AWorkFlow.Core.Models
         /// <param name="currentStep"></param>
         /// <param name="nextStepDirection"></param>
         /// <returns></returns>
-        public async Task<IEnumerable<JobDto>> PostStep(IJobRepository jobRepository, WorkStepDto currentStep, WorkFlowDirectionDto nextStepDirection)
+        public async Task<IEnumerable<JobDto>> PostStep(WorkStepDto currentStep, WorkFlowDirectionDto nextStepDirection)
         {
             ExpressionProvider expressionProvider;
             if (currentStep == null)
@@ -49,7 +49,7 @@ namespace AWorkFlow.Core.Models
             {
                 expressionProvider = new ExpressionProvider(new ArgumentsDto(currentStep.Arguments.PublicVariables));
             }
-            var loopBy = await expressionProvider.Format(nextStepDirection?.LoopByExp);
+            var loopBy = expressionProvider.Format(nextStepDirection?.LoopByExp);
             WorkFlowStepDto nextStepCfg;
             if (nextStepDirection == null)
             {
@@ -71,9 +71,9 @@ namespace AWorkFlow.Core.Models
                         StepCode = nextStepCfg.Code,
                         WorkFlowStep = nextStepCfg,
                         Arguments = expressionProvider.Arguments.Copy(),
-                        Group = expressionProvider.Format(nextStepCfg.GroupExp).Result.ResultJson,
-                        MatchQty = expressionProvider.Format(nextStepCfg.MatchQtyExp).Result.GetResult<int?>(),
-                        Tags = nextStepCfg.TagExps?.Select(x => expressionProvider.Format(x).Result.ResultJson)?.ToList(),
+                        Group = expressionProvider.Format(nextStepCfg.GroupExp).Result,
+                        MatchQty = expressionProvider.Format(nextStepCfg.MatchQtyExp).GetResult<int?>(),
+                        Tags = nextStepCfg.TagExps?.Select(x => expressionProvider.Format(x).Result)?.ToList(),
                         TagData = expressionProvider.Format(nextStepCfg.TagDataExp).Result
                     };
                     step.Arguments.PutPublic(ReservedVariableNames.LOOP_ITEM, loopItem.ToJson());
@@ -88,9 +88,9 @@ namespace AWorkFlow.Core.Models
                     StepCode = nextStepCfg.Code,
                     WorkFlowStep = nextStepCfg,
                     Arguments = expressionProvider.Arguments.Copy(),
-                    Group = expressionProvider.Format(nextStepCfg.GroupExp).Result.ResultJson,
-                    MatchQty = expressionProvider.Format(nextStepCfg.MatchQtyExp).Result.GetResult<int?>(),
-                    Tags = nextStepCfg.TagExps?.Select(x => expressionProvider.Format(x).Result.ResultJson)?.ToList(),
+                    Group = expressionProvider.Format(nextStepCfg.GroupExp).Result,
+                    MatchQty = expressionProvider.Format(nextStepCfg.MatchQtyExp).GetResult<int?>(),
+                    Tags = nextStepCfg.TagExps?.Select(x => expressionProvider.Format(x).Result)?.ToList(),
                     TagData = expressionProvider.Format(nextStepCfg.TagDataExp).Result
                 };
                 nextSteps.Add(step);
@@ -106,10 +106,10 @@ namespace AWorkFlow.Core.Models
                 IsManual = step.WorkFlowStep.IsManual,
                 PublicVariables = step.Arguments.PublicVariables,
                 Work = this,
-                WorkId = WorkId
+                WorkId = WorkId,
+                Step = step,
+                WorkStepId = step.WorkStepId
             });
-            await jobRepository.InsertJobs(nextJobs);
-
 
             return nextJobs;
         }

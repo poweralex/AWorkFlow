@@ -1,8 +1,8 @@
 ﻿using AWorkFlow.Core.Extensions;
 using AWorkFlow.Core.Providers;
-using AWorkFlow.Core.Repositories.Interfaces;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Runtime.Serialization;
 using System.Threading.Tasks;
 
@@ -26,15 +26,15 @@ namespace AWorkFlow.Core.Models
         public string WorkStepId { get; set; }
         public DateTime ActiveTime { get; set; }
         public bool IsManual { get; set; }
-        public int? MatchQty { get; set; }
         public bool Completed { get; set; }
         public bool Success { get; set; }
         public bool Fail { get; set; }
         public List<ActionSettingDto> Actions { get; set; }
         public Dictionary<string, string> PublicVariables { get; set; }
         public Dictionary<string, string> PrivateVariables { get; set; }
+        public List<JobExecutionResult> Executions { get; set; } = new List<JobExecutionResult>();
 
-        internal virtual async Task<IEnumerable<JobDto>> Execute(IJobRepository jobRepository, string user)
+        internal virtual async Task<IEnumerable<JobDto>> Execute()
         {
             List<JobDto> nextJobs = new List<JobDto>();
             // get action(s)
@@ -42,61 +42,75 @@ namespace AWorkFlow.Core.Models
             bool complete = true;
             bool success = false;
             bool fail = false;
-            ArgumentsDto arguments = new ArgumentsDto(PublicVariables, PrivateVariables);
-            var expressionProvider = new ExpressionProvider(arguments);
-            List<ExecutionResultDto> executionResults = new List<ExecutionResultDto>();
-            foreach (var action in Actions)
+            if (Actions?.Any() == true)
             {
-                // execute Actions
-                ExecutorProvider executorProvider = new ExecutorProvider();
-                var executor = await executorProvider.GetExecutor(action);
-                var executeResult = await executor.Execute(expressionProvider, action);
-                executionResults.Add(executeResult);
-                expressionProvider.Arguments.PutPrivate($"result{i}", executeResult?.ExecuteResult?.ToJson());
-                if (executeResult?.Success == true)
+                ArgumentsDto arguments = new ArgumentsDto(PublicVariables, PrivateVariables);
+                var expressionProvider = new ExpressionProvider(arguments);
+                List<ExecutionResultDto> executionResults = new List<ExecutionResultDto>();
+                foreach (var action in Actions)
                 {
-                    success = true;
-                    complete = true;
-                    break;
+                    // execute Actions
+                    ExecutorProvider executorProvider = new ExecutorProvider();
+                    var executor = await executorProvider.GetExecutor(action);
+                    var executeResult = await executor.Execute(expressionProvider, action);
+                    executionResults.Add(executeResult);
+                    expressionProvider.Arguments.PutPrivate($"result{i}", executeResult?.ExecuteResult?.ToJson());
+                    if (executeResult?.Success == true)
+                    {
+                        success = true;
+                        complete = true;
+                        break;
+                    }
+                    if (executeResult?.Fail == true)
+                    {
+                        fail = true;
+                        complete = true;
+                        break;
+                    }
+                    if (executeResult?.Completed != true)
+                    {
+                        complete = false;
+                        break;
+                    }
+                    i++;
                 }
-                if (executeResult?.Fail == true)
+                // save action result
+                Executions.Add(new JobExecutionResult
                 {
-                    fail = true;
-                    complete = true;
-                    break;
-                }
-                if (executeResult?.Completed != true)
-                {
-                    complete = false;
-                    break;
-                }
-                i++;
+                    ExecuteTime = DateTime.UtcNow,
+                    Results = executionResults
+                });
             }
-            // save action result
-            await jobRepository.SaveJobResult(this, executionResults, user);
+            else
+            {
+                complete = true;
+                success = true;
+            }
             if (complete)
             {
-                await jobRepository.FinishJob(Id, success, fail);
+                Completed = complete;
+                Success = success;
+                Fail = fail;
                 // post next job(s)
                 if (success)
                 {
-                    nextJobs.AddRange(await AfterSuccess(jobRepository, user));
+                    nextJobs.AddRange(await AfterSuccess());
                 }
                 if (fail)
                 {
-                    nextJobs.AddRange(await AfterFail(jobRepository, user));
+                    nextJobs.AddRange(await AfterFail());
                 }
             }
 
             return nextJobs;
         }
 
-        internal virtual async Task<IEnumerable<JobDto>> AfterSuccess(IJobRepository jobRepository, string user)
+        internal virtual async Task<IEnumerable<JobDto>> AfterSuccess()
         {
             return new List<JobDto>();
         }
 
-        internal virtual async Task<IEnumerable<JobDto>> AfterFail(IJobRepository jobRepository, string user)
+        internal virtual async Task<IEnumerable<JobDto>> AfterFail()
         {
             return new List<JobDto>();
         }
@@ -132,5 +146,11 @@ namespace AWorkFlow.Core.Models
         /// AfterAction of a step
         /// </summary>
         StepAfterAction
+    }
+
+    public class JobExecutionResult
+    {
+        public IEnumerable<ExecutionResultDto> Results { get; set; }
+        public DateTime ExecuteTime { get; set; }
     }
 }

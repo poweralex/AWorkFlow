@@ -4,7 +4,6 @@ using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using System.Collections.Generic;
 using System.Text.RegularExpressions;
-using System.Threading.Tasks;
 
 namespace AWorkFlow.Core.Providers
 {
@@ -17,11 +16,11 @@ namespace AWorkFlow.Core.Providers
             Arguments = arguments;
         }
 
-        public Task<ExpressionResultDto> Format(string expression)
+        public ExpressionResultDto Format(string expression)
         {
             if (string.IsNullOrEmpty(expression))
             {
-                return Task.FromResult(new ExpressionResultDto { IsEmpty = true });
+                return new ExpressionResultDto { IsEmpty = true };
             }
             var keyExpressions = GetExpressions(expression);
             string res = expression;
@@ -29,7 +28,7 @@ namespace AWorkFlow.Core.Providers
             {
                 res = res.Replace(key.Expression, GetValue(Arguments, key));
             }
-            return Task.FromResult(new ExpressionResultDto { ResultJson = res });
+            return new ExpressionResultDto { Result = res };
         }
 
         /// <summary>

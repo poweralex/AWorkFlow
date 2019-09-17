@@ -1,4 +1,4 @@
-﻿using AWorkFlow.Core.Repositories.Interfaces;
+﻿using AWorkFlow.Core.Providers;
 using System;
 using System.Collections.Generic;
 using System.Runtime.Serialization;
@@ -18,20 +18,24 @@ namespace AWorkFlow.Core.Models.Jobs
             JobType = JobTypes.StepPreAction;
         }
 
-        internal override async Task<IEnumerable<JobDto>> AfterSuccess(IJobRepository jobRepository, string user)
+        internal override async Task<IEnumerable<JobDto>> AfterSuccess()
         {
             // post step.action job
+            var expressionProvider = new ExpressionProvider(new ArgumentsDto(PublicVariables));
+
             var nextJob = new StepActionJob
             {
                 Id = Guid.NewGuid().ToString(),
                 ActiveTime = DateTime.UtcNow,
                 Actions = Step.WorkFlowStep.Actions,
                 IsManual = Step.WorkFlowStep.IsManual,
+                MatchQty = expressionProvider.Format(Step.WorkFlowStep.MatchQtyExp).GetResult<int?>(),
                 PublicVariables = PublicVariables,
                 Work = Work,
-                WorkId = Work.WorkId
+                WorkId = Work.WorkId,
+                Step = Step,
+                WorkStepId = Step.WorkStepId
             };
-            await jobRepository.InsertJob(nextJob);
             return new List<JobDto> { nextJob };
         }
     }

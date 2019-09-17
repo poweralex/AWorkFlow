@@ -1,5 +1,4 @@
-﻿using AWorkFlow.Core.Repositories.Interfaces;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Linq;
 using System.Runtime.Serialization;
 using System.Threading.Tasks;
@@ -12,13 +11,14 @@ namespace AWorkFlow.Core.Models.Jobs
         public WorkDto Work { get; set; }
         [IgnoreDataMember]
         public WorkStepDto Step { get; set; }
+        public int? MatchQty { get; set; }
 
         public StepActionJob()
         {
             JobType = JobTypes.StepAction;
         }
 
-        internal override async Task<IEnumerable<JobDto>> AfterSuccess(IJobRepository jobRepository, string user)
+        internal override async Task<IEnumerable<JobDto>> AfterSuccess()
         {
             List<JobDto> nextJobs = new List<JobDto>();
             // post next step(s) by partial success
@@ -30,7 +30,7 @@ namespace AWorkFlow.Core.Models.Jobs
 
             foreach (var direction in nextSteps)
             {
-                nextJobs.AddRange(await Work.PostStep(jobRepository, Step, direction));
+                nextJobs.AddRange(await Work.PostStep(Step, direction));
             }
 
             // update step result
@@ -38,14 +38,14 @@ namespace AWorkFlow.Core.Models.Jobs
             return nextJobs;
         }
 
-        internal override Task<IEnumerable<JobDto>> AfterFail(IJobRepository jobRepository, string user)
+        internal override Task<IEnumerable<JobDto>> AfterFail()
         {
             // post next step(s) by partial fail
             // update step result
             // post next step(s) by fail
             // update group result
             // post next step by group all/any fail
-            return base.AfterFail(jobRepository, user);
+            return base.AfterFail();
         }
     }
 }

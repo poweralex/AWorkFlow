@@ -198,6 +198,70 @@
             AfterAction of a step
             </summary>
         </member>
+        <member name="T:AWorkFlow.Core.Models.OperationResult">
+            <summary>
+            Model of operation result
+            </summary>
+        </member>
+        <member name="M:AWorkFlow.Core.Models.OperationResult.#ctor">
+            <summary>
+            default constructor
+            </summary>
+        </member>
+        <member name="M:AWorkFlow.Core.Models.OperationResult.#ctor(AWorkFlow.Core.Models.OperationResult)">
+            <summary>
+            constructor, copy from another OperationResult or OperationResult&lt;T&gt;
+            </summary>
+            <param name="result"></param>
+        </member>
+        <member name="P:AWorkFlow.Core.Models.OperationResult.Success">
+            <summary>
+            Indicates that the operation was successful or not
+            </summary>
+        </member>
+        <member name="P:AWorkFlow.Core.Models.OperationResult.Code">
+            <summary>
+            Message code
+            </summary>
+        </member>
+        <member name="P:AWorkFlow.Core.Models.OperationResult.Message">
+            <summary>
+            Message description
+            </summary>
+        </member>
+        <member name="P:AWorkFlow.Core.Models.OperationResult.Exception">
+            <summary>
+            Exception
+            </summary>
+        </member>
+        <member name="T:AWorkFlow.Core.Models.OperationResult`1">
+            <summary>
+            default constructor
+            </summary>
+            <typeparam name="T">type of Data</typeparam>
+        </member>
+        <member name="M:AWorkFlow.Core.Models.OperationResult`1.#ctor">
+            <summary>
+            default constructor
+            </summary>
+        </member>
+        <member name="M:AWorkFlow.Core.Models.OperationResult`1.#ctor(AWorkFlow.Core.Models.OperationResult)">
+            <summary>
+            constructor, copy from another OperationResult or OperationResult&lt;T&gt;
+            </summary>
+            <param name="result">copy from</param>
+        </member>
+        <member name="M:AWorkFlow.Core.Models.OperationResult`1.#ctor(AWorkFlow.Core.Models.OperationResult{`0})">
+            <summary>
+            constructor, copy from another OperationResult which type is same as this object
+            </summary>
+            <param name="result">copy from</param>
+        </member>
+        <member name="P:AWorkFlow.Core.Models.OperationResult`1.Data">
+            <summary>
+            Data
+            </summary>
+        </member>
         <member name="P:AWorkFlow.Core.Models.WorkDto.BeginTime">
             <summary>
             begin time
@@ -208,7 +272,7 @@
             end time
             </summary>
         </member>
-        <member name="M:AWorkFlow.Core.Models.WorkDto.PostStep(AWorkFlow.Core.Repositories.Interfaces.IJobRepository,AWorkFlow.Core.Models.WorkStepDto,AWorkFlow.Core.Models.WorkFlowDirectionDto)">
+        <member name="M:AWorkFlow.Core.Models.WorkDto.PostStep(AWorkFlow.Core.Models.WorkStepDto,AWorkFlow.Core.Models.WorkFlowDirectionDto)">
             <summary>
             post next step(s) by direction
             </summary>

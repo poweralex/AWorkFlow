@@ -18,7 +18,7 @@ namespace AWorkFlow.ConsoleAction
             if (action.Settings != null)
             {
                 var Settings = JsonConvert.DeserializeObject<ConsoleActionSetting>(JsonConvert.SerializeObject(action.Settings));
-                output = expressionProvider.Format(Settings.OutputExp).Result.ResultJson;
+                output = expressionProvider.Format(Settings.OutputExp).Result;
                 Console.WriteLine($"{DateTime.Now.ToLongTimeString()}: {output}");
             }
             bool? indicateResult = null;
@@ -33,6 +33,10 @@ namespace AWorkFlow.ConsoleAction
                         break;
                     }
                 }
+            }
+            else
+            {
+                indicateResult = true;
             }
             sw.Stop();
             return Task.FromResult(new ExecutionResultDto

@@ -13,6 +13,10 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AWorkFlow.ConsoleAction", "
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AWorkFlow.OldCodes", "AWorkFlow.OldCodes\AWorkFlow.OldCodes.csproj", "{234249D4-C169-456A-BC37-A0F8F299EF47}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AWorkFlow.RestfulApiAction", "AWorkFlow.RestfulApiAction\AWorkFlow.RestfulApiAction.csproj", "{9050F3F4-AFDB-450D-B409-D94F1C2443F3}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AWorkFlow.VariableProcessAction", "AWorkFlow.VariableProcessAction\AWorkFlow.VariableProcessAction.csproj", "{97BA9900-B934-4A0F-8FC2-6860FED2AC0B}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -37,6 +41,14 @@ Global
 		{6B27F310-986D-4957-9C90-04F76A2FE31C}.Release|Any CPU.Build.0 = Debug|Any CPU
 		{234249D4-C169-456A-BC37-A0F8F299EF47}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{234249D4-C169-456A-BC37-A0F8F299EF47}.Release|Any CPU.ActiveCfg = Debug|Any CPU
+		{9050F3F4-AFDB-450D-B409-D94F1C2443F3}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{9050F3F4-AFDB-450D-B409-D94F1C2443F3}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{9050F3F4-AFDB-450D-B409-D94F1C2443F3}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{9050F3F4-AFDB-450D-B409-D94F1C2443F3}.Release|Any CPU.Build.0 = Release|Any CPU
+		{97BA9900-B934-4A0F-8FC2-6860FED2AC0B}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{97BA9900-B934-4A0F-8FC2-6860FED2AC0B}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{97BA9900-B934-4A0F-8FC2-6860FED2AC0B}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{97BA9900-B934-4A0F-8FC2-6860FED2AC0B}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

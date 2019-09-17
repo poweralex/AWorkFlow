@@ -9,7 +9,6 @@ namespace AWorkFlow.Core.Repositories.Interfaces
     {
         Task<bool> InsertJob(JobDto job);
         Task<bool> InsertJobs(IEnumerable<JobDto> jobs);
-        Task<bool> SaveJobResult(JobDto job, IEnumerable<ExecutionResultDto> results, string user);
         Task<bool> FinishJob(string id, bool success, bool fail);
         Task<bool> LockJob(string id, string key, TimeSpan? lockTime);
         Task<bool> UnLockJob(string id, string key);

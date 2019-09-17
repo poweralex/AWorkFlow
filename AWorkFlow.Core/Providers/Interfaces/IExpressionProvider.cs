@@ -1,5 +1,4 @@
 ﻿using AWorkFlow.Core.Models;
-using System.Threading.Tasks;
 
 namespace AWorkFlow.Core.Providers.Interfaces
 {
@@ -7,6 +6,6 @@ namespace AWorkFlow.Core.Providers.Interfaces
     {
         ArgumentsDto Arguments { get; }
 
-        Task<ExpressionResultDto> Format(string expression);
+        ExpressionResultDto Format(string expression);
     }
 }

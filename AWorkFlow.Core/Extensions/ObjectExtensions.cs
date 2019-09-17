@@ -2,7 +2,7 @@
 
 namespace AWorkFlow.Core.Extensions
 {
-    static class ObjectExtensions
+    public static class ObjectExtensions
     {
         public static string ToJson(this object obj)
         {
