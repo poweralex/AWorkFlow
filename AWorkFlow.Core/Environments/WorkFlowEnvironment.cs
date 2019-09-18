@@ -10,17 +10,11 @@ namespace AWorkFlow.Core.Environments
         private readonly ContainerBuilder builder;
         private IContainer container;
 
-        private WorkFlowEnvironment()
+        internal WorkFlowEnvironment()
         {
             builder = new ContainerBuilder();
-            builder.RegisterType<WorkFlowProvider>().As<IWorkFlowProvider>();
-            builder.RegisterType<WorkProvider>().As<IWorkProvider>();
-            builder.RegisterType<JobProvider>().As<IJobProvider>();
-            builder.RegisterType<ExecutorProvider>().As<IExecutorProvider>();
             container = null;
         }
-
-        public static WorkFlowEnvironment Instance { get; } = new WorkFlowEnvironment();
 
         public WorkFlowEnvironment RegisterAction<T>(string actionType) where T : IExecutor
         {
@@ -28,11 +22,11 @@ namespace AWorkFlow.Core.Environments
             return this;
         }
 
-        public WorkFlowEnvironment RegisterRepository<TImp, TAs>() where TImp : TAs
-        {
-            builder.RegisterType<TImp>().As<TAs>();
-            return this;
-        }
+        //public WorkFlowEnvironment RegisterRepository<TImp, TAs>() where TImp : TAs
+        //{
+        //    builder.RegisterType<TImp>().As<TAs>();
+        //    return this;
+        //}
 
         public WorkFlowEnvironment Build()
         {

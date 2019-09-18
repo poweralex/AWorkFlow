@@ -1,6 +1,5 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Text;
+using AWorkFlow.Core.Models;
 
 namespace AWorkFlow.Core.Runner
 {
@@ -9,5 +8,9 @@ namespace AWorkFlow.Core.Runner
     /// </summary>
     public class WorkFlowManager
     {
+        public bool Add(WorkFlowDto workFlow)
+        {
+            throw new NotImplementedException();
+        }
     }
 }

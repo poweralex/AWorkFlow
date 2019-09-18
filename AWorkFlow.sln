@@ -3,9 +3,11 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio 15
 VisualStudioVersion = 15.0.28307.572
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AWorkFlow.Core", "AWorkFlow.Core\AWorkFlow.Core.csproj", "{434E6AC4-3EAA-4E14-ABBF-46A80A8ADB67}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AWorkFlow.Core", "AWorkFlow.Core\AWorkFlow.Core.csproj", "{434E6AC4-3EAA-4E14-ABBF-46A80A8ADB67}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AWorkFlow.Tester", "AWorkFlow.Tester\AWorkFlow.Tester.csproj", "{AD452166-3461-4DA6-82AF-9C829A22BFAC}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AWorkFlow.Tester", "AWorkFlow.Tester\AWorkFlow.Tester.csproj", "{AD452166-3461-4DA6-82AF-9C829A22BFAC}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AWorkFlow.ConsoleAction", "AWorkFlow.ConsoleAction\AWorkFlow.ConsoleAction.csproj", "{9B51DDB2-9F02-45DF-B181-A3E01FF244B5}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -21,6 +23,10 @@ Global
 		{AD452166-3461-4DA6-82AF-9C829A22BFAC}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{AD452166-3461-4DA6-82AF-9C829A22BFAC}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{AD452166-3461-4DA6-82AF-9C829A22BFAC}.Release|Any CPU.Build.0 = Release|Any CPU
+		{9B51DDB2-9F02-45DF-B181-A3E01FF244B5}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{9B51DDB2-9F02-45DF-B181-A3E01FF244B5}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{9B51DDB2-9F02-45DF-B181-A3E01FF244B5}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{9B51DDB2-9F02-45DF-B181-A3E01FF244B5}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

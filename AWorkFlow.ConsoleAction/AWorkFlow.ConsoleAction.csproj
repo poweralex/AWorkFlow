@@ -1,12 +1,10 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <OutputType>Exe</OutputType>
-    <TargetFramework>netcoreapp2.2</TargetFramework>
+    <TargetFramework>netstandard2.0</TargetFramework>
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\AWorkFlow.ConsoleAction\AWorkFlow.ConsoleAction.csproj" />
     <ProjectReference Include="..\AWorkFlow.Core\AWorkFlow.Core.csproj" />
   </ItemGroup>
 
