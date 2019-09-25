@@ -9,8 +9,32 @@ namespace AWorkFlow.Core.Runner
         private static Dictionary<string, WorkFlowEngine> namedEngines = new Dictionary<string, WorkFlowEngine>();
 
         public WorkFlowEnvironment Settings { get; set; } = new WorkFlowEnvironment();
-        public WorkManager Worker { get; set; } = new WorkManager();
-        public WorkFlowManager WorkFlow { get; set; } = new WorkFlowManager();
+        public WorkManager WorkManager { get; private set; }
+        public WorkFlowManager WorkFlowManager { get; private set; }
+        public JobManager JobManager { get; private set; }
+
+        private WorkFlowEngine()
+        {
+
+        }
+
+        /// <summary>
+        /// start engine
+        /// </summary>
+        public void Start()
+        {
+            WorkFlowManager = Settings.Resolve<WorkFlowManager>();
+            WorkManager = Settings.Resolve<WorkManager>();
+            JobManager = Settings.Resolve<JobManager>();
+        }
+
+        /// <summary>
+        /// stop engine
+        /// </summary>
+        public void Stop()
+        {
+            // persistent
+        }
 
         public static WorkFlowEngine Create(string name)
         {

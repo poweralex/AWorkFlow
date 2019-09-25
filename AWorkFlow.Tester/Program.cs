@@ -219,15 +219,27 @@ namespace AWorkFlow.Tester
                 }
             };
             #endregion
+
             // set environments
             var engine = WorkFlowEngine.Create("workflow");
+            // register actions
             engine.Settings
                 .RegisterAction<ConsoleActionExecutor>("console")
                 .Build();
-            engine.WorkFlow.Add(workflow);
+            // register workers
+
+            // start engine
+            engine.Start();
+
+            // config first workflow
+            engine.WorkFlowManager.Add(workflow);
 
             // start a new work with data
-            var work = engine.Worker.StartWork("NewOrder", orderData);
+            var work = engine.WorkManager.StartWork("NewOrder", orderData);
+
+
+            // stop engine
+            engine.Stop();
 
             Console.WriteLine("press any key to exit...");
             Console.ReadKey();

@@ -1,4 +1,6 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
+using System.Threading.Tasks;
 
 namespace AWorkFlow.Core.Models
 {
@@ -47,6 +49,17 @@ namespace AWorkFlow.Core.Models
         /// work flow directions
         /// </summary>
         public List<WorkFlowDirectionDto> Flows { get; set; }
+
+        /// <summary>
+        /// indicate by selector
+        /// </summary>
+        /// <param name="data"></param>
+        /// <returns>if this workflow suits the data</returns>
+        internal Task<bool> Suit(object data)
+        {
+            throw new NotImplementedException();
+        }
+
     }
 
     /// <summary>

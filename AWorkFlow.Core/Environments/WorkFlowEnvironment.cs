@@ -1,7 +1,8 @@
-﻿using Autofac;
-using AWorkFlow.Core.Providers;
+﻿using System;
+using System.Collections.Generic;
+using Autofac;
 using AWorkFlow.Core.Providers.Interfaces;
-using System;
+using AWorkFlow.Core.Runner;
 
 namespace AWorkFlow.Core.Environments
 {
@@ -9,10 +10,15 @@ namespace AWorkFlow.Core.Environments
     {
         private readonly ContainerBuilder builder;
         private IContainer container;
+        public List<JobExecutor> workers { get; private set; } = new List<JobExecutor>();
 
         internal WorkFlowEnvironment()
         {
             builder = new ContainerBuilder();
+
+            builder.RegisterType<WorkFlowManager>();
+            builder.RegisterType<WorkManager>();
+            builder.RegisterType<JobManager>();
             container = null;
         }
 
@@ -27,6 +33,12 @@ namespace AWorkFlow.Core.Environments
         //    builder.RegisterType<TImp>().As<TAs>();
         //    return this;
         //}
+
+        public WorkFlowEnvironment RegisterWorker(JobExecutor worker)
+        {
+            workers.Add(worker);
+            return this;
+        }
 
         public WorkFlowEnvironment Build()
         {
