@@ -1,9 +1,9 @@
-﻿using System;
+﻿using AWorkFlow.Core.Models;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using AWorkFlow.Core.Models;
 
 namespace AWorkFlow.Core.Runner
 {
@@ -33,6 +33,8 @@ namespace AWorkFlow.Core.Runner
             var works = workingFlows.Select(wf =>
                 new WorkDto
                 {
+                    Id = Guid.NewGuid().ToString(),
+                    WorkFlow = wf
                 }
             );
             runningWorks.AddRange(works);

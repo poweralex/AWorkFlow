@@ -222,11 +222,12 @@ namespace AWorkFlow.Tester
 
             // set environments
             var engine = WorkFlowEngine.Create("workflow");
-            // register actions
             engine.Settings
+            // register actions
                 .RegisterAction<ConsoleActionExecutor>("console")
-                .Build();
             // register workers
+                .RegisterWorker(new JobExecutor())
+                .Build();
 
             // start engine
             engine.Start();
