@@ -9,7 +9,7 @@ namespace AWorkFlow.Core.Models
         public WorkDto Work { get; set; }
         public WorkStepDto Step { get; set; }
 
-        public Task Execute()
+        public Task<JobExecutionResultDto> Execute()
         {
             throw new NotImplementedException();
         }

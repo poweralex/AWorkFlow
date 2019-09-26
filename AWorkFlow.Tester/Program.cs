@@ -233,7 +233,7 @@ namespace AWorkFlow.Tester
             engine.Start();
 
             // config first workflow
-            engine.WorkFlowManager.Add(workflow);
+            engine.WorkFlowManager.Add(workflow).Wait();
 
             // start a new work with data
             var works = engine.WorkManager.StartWork("NewOrder", orderData).Result;

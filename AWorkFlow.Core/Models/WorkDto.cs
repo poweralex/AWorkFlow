@@ -87,7 +87,11 @@ namespace AWorkFlow.Core.Models
             }
 
             // work.AfterAction
-            if (WorkFlow?.AfterActions?.Any() == true && !RunningJobs.Any(x => x.Type == JobType.WorkAfterAction) && !WorkingSteps.Any() && !Finished)
+            if (WorkFlow?.AfterActions?.Any() == true 
+                && !RunningJobs.Any(x => x.Type == JobType.WorkAfterAction) 
+                && (WorkFlow?.Steps?.Any() != true || Steps.Any(x => x.WorkFlowStep.IsEnd))
+                && !WorkingSteps.Any() 
+                && !Finished)
             {
                 jobs.Add(new JobDto
                 {
