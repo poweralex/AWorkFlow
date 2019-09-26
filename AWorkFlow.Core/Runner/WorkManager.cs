@@ -12,15 +12,13 @@ namespace AWorkFlow.Core.Runner
     /// </summary>
     public class WorkManager
     {
-        public WorkFlowEngine Engine { get; private set; }
+        public WorkFlowEngine Engine { get; set; }
 
         private List<WorkDto> runningWorks = new List<WorkDto>();
         private CancellationTokenSource cancelTokenSource = new CancellationTokenSource();
 
-        public WorkManager(WorkFlowEngine engine)
+        public WorkManager()
         {
-            Engine = engine;
-            NestedLoops(cancelTokenSource.Token);
         }
 
         public async Task<IEnumerable<WorkDto>> StartWork(string category, object data)
@@ -36,15 +34,20 @@ namespace AWorkFlow.Core.Runner
                     Id = Guid.NewGuid().ToString(),
                     WorkFlow = wf
                 }
-            );
+            ).ToList();
             runningWorks.AddRange(works);
 
-            works.Select(x => x.Start());
+            works.ForEach(x => x.Start());
 
             // distribute jobs
             Engine.JobManager.PushJobs(works.SelectMany(w => w.RunningJobs));
 
             return works;
+        }
+
+        public void Start()
+        {
+            NestedLoops(cancelTokenSource.Token);
         }
 
         private async Task NestedLoops(CancellationToken token)
@@ -56,10 +59,17 @@ namespace AWorkFlow.Core.Runner
                 token.ThrowIfCancellationRequested();
                 // delay
                 await Task.Delay(delayMs);
-                // check work changed
+                // TODO: check work changed
                 List<WorkDto> changedWorks = new List<WorkDto>();
                 if (changedWorks.Any())
                 {
+                    foreach (var work in changedWorks)
+                    {
+                        work.FireJobs();
+                    }
+
+                    // distribute jobs
+                    Engine.JobManager.PushJobs(changedWorks.SelectMany(w => w.RunningJobs));
                 }
                 else
                 {

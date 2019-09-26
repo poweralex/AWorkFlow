@@ -1,6 +1,6 @@
-﻿using System;
+﻿using AWorkFlow.Core.Environments;
+using System;
 using System.Collections.Generic;
-using AWorkFlow.Core.Environments;
 
 namespace AWorkFlow.Core.Runner
 {
@@ -24,8 +24,13 @@ namespace AWorkFlow.Core.Runner
         public void Start()
         {
             WorkFlowManager = Settings.Resolve<WorkFlowManager>();
+            WorkFlowManager.Engine = this;
             WorkManager = Settings.Resolve<WorkManager>();
+            WorkManager.Engine = this;
+            WorkManager.Start();
             JobManager = Settings.Resolve<JobManager>();
+            JobManager.Engine = this;
+            JobManager.SetWorkers(Settings.Workers);
         }
 
         /// <summary>

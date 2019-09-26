@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading.Tasks;
 
 namespace AWorkFlow.Core.Models
@@ -21,6 +22,10 @@ namespace AWorkFlow.Core.Models
         /// version number of the code
         /// </summary>
         public int Version { get; set; }
+        /// <summary>
+        /// is disabled
+        /// </summary>
+        public bool Disabled { get; set; }
         /// <summary>
         /// selectors which will run first to determine if this workflow is good to go
         /// </summary>
@@ -55,8 +60,15 @@ namespace AWorkFlow.Core.Models
         /// </summary>
         /// <param name="data"></param>
         /// <returns>if this workflow suits the data</returns>
-        internal Task<bool> Suit(object data)
+        internal async Task<bool> Suit(object data)
         {
+            if (Selectors?.Any() != true)
+            {
+                return true;
+            }
+
+            // TODO: execute selector(s) to check
+            return true;
             throw new NotImplementedException();
         }
 
@@ -150,6 +162,16 @@ namespace AWorkFlow.Core.Models
         /// when to post next step
         /// </summary>
         public WorkFlowNextOn NextOn { get; set; }
+
+        internal bool IsFulfilled(WorkDto workDto)
+        {
+            throw new NotImplementedException();
+        }
+
+        internal IEnumerable<WorkStepDto> PostSteps(WorkDto workDto)
+        {
+            throw new NotImplementedException();
+        }
     }
 
     /// <summary>

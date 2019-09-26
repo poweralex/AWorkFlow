@@ -236,7 +236,7 @@ namespace AWorkFlow.Tester
             engine.WorkFlowManager.Add(workflow);
 
             // start a new work with data
-            var work = engine.WorkManager.StartWork("NewOrder", orderData);
+            var works = engine.WorkManager.StartWork("NewOrder", orderData).Result;
 
 
             // stop engine

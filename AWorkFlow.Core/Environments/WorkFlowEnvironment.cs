@@ -10,7 +10,7 @@ namespace AWorkFlow.Core.Environments
     {
         private readonly ContainerBuilder builder;
         private IContainer container;
-        public List<JobExecutor> workers { get; private set; } = new List<JobExecutor>();
+        public List<JobExecutor> Workers { get; private set; } = new List<JobExecutor>();
 
         internal WorkFlowEnvironment()
         {
@@ -36,7 +36,7 @@ namespace AWorkFlow.Core.Environments
 
         public WorkFlowEnvironment RegisterWorker(JobExecutor worker)
         {
-            workers.Add(worker);
+            Workers.Add(worker);
             return this;
         }
 

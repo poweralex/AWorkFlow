@@ -1,5 +1,6 @@
-﻿using System.Collections.Generic;
-using AWorkFlow.Core.Models;
+﻿using AWorkFlow.Core.Models;
+using System.Collections.Generic;
+using System.Linq;
 
 namespace AWorkFlow.Core.Runner
 {
@@ -11,10 +12,13 @@ namespace AWorkFlow.Core.Runner
 
         private List<JobDto> runningJobs = new List<JobDto>();
 
-        public JobManager(WorkFlowEngine engine)
+        public JobManager()
         {
-            Engine = engine;
-            workers = engine.Settings.Workers;
+        }
+
+        public void SetWorkers(IEnumerable<JobExecutor> workers)
+        {
+            this.workers = workers.ToList();
         }
 
         internal void PushJobs(IEnumerable<JobDto> jobs)
