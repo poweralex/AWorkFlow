@@ -1,6 +1,9 @@
-﻿using System.Collections.Generic;
+﻿using System.Collections.Concurrent;
+using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
+using System.Threading.Tasks;
+using AWorkFlow.Core.Distributes;
 using AWorkFlow.Core.Models;
 
 namespace AWorkFlow.Core.Runner
@@ -9,16 +12,16 @@ namespace AWorkFlow.Core.Runner
     {
         public WorkFlowEngine Engine { get; set; }
 
-        private List<JobExecutor> workers;
+        private List<IJobDistribute> workers;
 
-        private List<JobDto> runningJobs = new List<JobDto>();
+        private ConcurrentQueue<JobDto> runningJobs = new ConcurrentQueue<JobDto>();
         private readonly CancellationTokenSource cancelTokenSource = new CancellationTokenSource();
 
         public JobManager()
         {
         }
 
-        public void SetWorkers(IEnumerable<JobExecutor> workers)
+        public void SetWorkers(IEnumerable<IJobDistribute> workers)
         {
             foreach (var worker in workers)
             {
@@ -30,27 +33,45 @@ namespace AWorkFlow.Core.Runner
 
         private void Worker_JobFailed(object sender, JobFailedEventArgs e)
         {
-            PickJob((JobExecutor)sender);
+            System.Console.WriteLine($"job failed: {e?.Exception?.Message}, requeue job {e?.Job?.Type}");
+            runningJobs.Enqueue(e.Job);
+            PickJob((IJobDistribute)sender);
         }
 
         private void Worker_JobCompleted(object sender, JobCompletedEventArgs e)
         {
-            PickJob((JobExecutor)sender);
+            System.Console.WriteLine($"job completed: success:{e?.Result?.Success}, fail:{e?.Result?.Fail}, message:{e?.Result?.Message}");
+            PickJob((IJobDistribute)sender);
         }
 
-        internal void PushJobs(IEnumerable<JobDto> jobs)
+        internal void PushJobs(params JobDto[] jobs)
         {
-            runningJobs.AddRange(jobs);
-        }
-
-        private void PickJob(JobExecutor worker)
-        {
-            var job = runningJobs.Take(1);
-            if (job?.Any() != true)
+            System.Console.WriteLine($"{jobs?.Length} new job(s) comming");
+            foreach (var job in jobs)
             {
-                return;
+                runningJobs.Enqueue(job);
             }
-            worker.Execute(job.First());
+            System.Console.WriteLine($"current jobs: {runningJobs.Count}");
+            Task.Run(() =>
+            {
+                foreach (var worker in workers)
+                {
+                    if (!worker.IsBusy)
+                    {
+                        PickJob(worker);
+                    }
+                }
+            });
+        }
+
+        private async Task PickJob(IJobDistribute worker)
+        {
+            if (runningJobs.TryDequeue(out JobDto job))
+            {
+                System.Console.WriteLine($"current jobs: {runningJobs.Count}");
+                var res = await worker.Execute(job);
+
+            }
 
         }
 

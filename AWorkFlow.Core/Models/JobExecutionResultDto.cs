@@ -1,20 +1,15 @@
 ﻿using System;
+using System.Collections.Generic;
+using System.Text;
 
 namespace AWorkFlow.Core.Models
 {
-    /// <summary>
-    /// execution result dto
-    /// </summary>
-    public class ExecutionResultDto
+    public class JobExecutionResultDto
     {
         /// <summary>
-        /// execute arguments
+        /// action execution results
         /// </summary>
-        public object ExecuteArguments { get; set; }
-        /// <summary>
-        /// execute result
-        /// </summary>
-        public object ExecuteResult { get; set; }
+        public List<ActionExecutionResultDto> ActionResults { get; set; } = new List<ActionExecutionResultDto>();
         /// <summary>
         /// execution time
         /// </summary>
@@ -31,5 +26,9 @@ namespace AWorkFlow.Core.Models
         /// if execution failed
         /// </summary>
         public bool Fail { get; set; }
+        /// <summary>
+        /// execution message
+        /// </summary>
+        public string Message { get; set; }
     }
 }

@@ -1,7 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
 using Autofac;
-using AWorkFlow.Core.Providers.Interfaces;
+using AWorkFlow.Core.ActionExecutors;
+using AWorkFlow.Core.Distributes;
 using AWorkFlow.Core.Runner;
 
 namespace AWorkFlow.Core.Environments
@@ -10,7 +11,7 @@ namespace AWorkFlow.Core.Environments
     {
         private readonly ContainerBuilder builder;
         private IContainer container;
-        public List<JobExecutor> Workers { get; private set; } = new List<JobExecutor>();
+        public List<IJobDistribute> Workers { get; private set; } = new List<IJobDistribute>();
 
         internal WorkFlowEnvironment()
         {
@@ -22,9 +23,9 @@ namespace AWorkFlow.Core.Environments
             container = null;
         }
 
-        public WorkFlowEnvironment RegisterAction<T>(string actionType) where T : IExecutor
+        public WorkFlowEnvironment RegisterAction<T>(string actionType) where T : IActionExecutor
         {
-            builder.RegisterType<T>().Named<IExecutor>(GetActionName(actionType));
+            builder.RegisterType<T>().Named<IActionExecutor>(GetActionName(actionType));
             return this;
         }
 
@@ -34,7 +35,7 @@ namespace AWorkFlow.Core.Environments
         //    return this;
         //}
 
-        public WorkFlowEnvironment RegisterWorker(JobExecutor worker)
+        public WorkFlowEnvironment RegisterWorker(IJobDistribute worker)
         {
             Workers.Add(worker);
             return this;
@@ -53,9 +54,9 @@ namespace AWorkFlow.Core.Environments
             }
         }
 
-        public IExecutor ResolveAction(string actionType)
+        public IActionExecutor ResolveAction(string actionType)
         {
-            return container.ResolveNamed<IExecutor>(GetActionName(actionType));
+            return container.ResolveNamed<IActionExecutor>(GetActionName(actionType));
         }
 
         public T Resolve<T>()

@@ -29,31 +29,6 @@ namespace AWorkFlow.Core.Models
         /// <summary>
         /// execution result(s)
         /// </summary>
-        public List<JobExecutionResultDto> Executions { get; set; }
-    }
-
-    public class JobExecutionResultDto
-    {
-        public object Data { get; set; }
-        /// <summary>
-        /// submit time
-        /// </summary>
-        public DateTime? SubmitTime { get; set; }
-        /// <summary>
-        /// qty
-        /// </summary>
-        public int? Qty { get; set; }
-        /// <summary>
-        /// is success
-        /// </summary>
-        public bool Success { get; set; }
-        /// <summary>
-        /// is fail
-        /// </summary>
-        public bool Failed { get; set; }
-        /// <summary>
-        /// is cancelled
-        /// </summary>
-        public bool Cancelled { get; set; }
+        public List<ActionExecutionResultDto> Executions { get; set; }
     }
 }

@@ -1,26 +1,18 @@
-﻿using System;
-using System.Threading.Tasks;
-
-namespace AWorkFlow.Core.Models
+﻿namespace AWorkFlow.Core.Models
 {
     public class JobDto
     {
-        public JobType Type { get; set; }
+        public string Type { get; set; }
         public WorkDto Work { get; set; }
         public WorkStepDto Step { get; set; }
-
-        public Task<JobExecutionResultDto> Execute()
-        {
-            throw new NotImplementedException();
-        }
     }
 
-    public enum JobType
+    public class JobType
     {
-        WorkPreAction,
-        WorkAfterAction,
-        StepPreAction,
-        StepAction,
-        StepAfterAction
+        public static readonly string WorkPreAction = "WorkPreAction";
+        public static readonly string WorkAfterAction = "WorkAfterAction";
+        public static readonly string StepPreAction = "StepPreAction";
+        public static readonly string StepAction = "StepAction";
+        public static readonly string StepAfterAction = "StepAfterAction";
     }
 }

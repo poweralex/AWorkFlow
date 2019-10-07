@@ -13,7 +13,7 @@ namespace AWorkFlow.Core.Providers
 
         public ExpressionProvider(ArgumentsDto arguments)
         {
-            Arguments = arguments;
+            Arguments = arguments ?? new ArgumentsDto();
         }
 
         public ExpressionResultDto Format(string expression)

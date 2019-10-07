@@ -1,6 +1,11 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
+using Autofac;
 using AWorkFlow.ConsoleAction;
+using AWorkFlow.Core.ActionExecutors;
+using AWorkFlow.Core.Distributes;
+using AWorkFlow.Core.JobExecutors;
 using AWorkFlow.Core.Models;
 using AWorkFlow.Core.Runner;
 
@@ -11,6 +16,7 @@ namespace AWorkFlow.Tester
         private static void Main(string[] args)
         {
             Console.WriteLine("Hello workflow!");
+
             #region init data
             // set workflow
             var workflow = new WorkFlowDto
@@ -221,12 +227,20 @@ namespace AWorkFlow.Tester
             #endregion
 
             // set environments
+            var actionBuilder = new ContainerBuilder();
+            actionBuilder.RegisterType<ConsoleActionExecutor>().Named<IActionExecutor>("console");
+            IContainer actionContainer = actionBuilder.Build();
+            var jobExecutionBuilder = new ContainerBuilder();
+            jobExecutionBuilder.RegisterInstance(actionContainer);
+            jobExecutionBuilder.RegisterType<WorkPreActionJobExecutor>().Named<IJobExecutor>(JobType.WorkPreAction);
+            IContainer executionContainer = jobExecutionBuilder.Build();
+
             var engine = WorkFlowEngine.Create("workflow");
             engine.Settings
             // register actions
                 .RegisterAction<ConsoleActionExecutor>("console")
             // register workers
-                .RegisterWorker(new JobExecutor())
+                .RegisterWorker(new DirectDistribute(new JobRunner(executionContainer)))
                 .Build();
 
             // start engine
@@ -239,11 +253,11 @@ namespace AWorkFlow.Tester
             var works = engine.WorkManager.StartWork("NewOrder", orderData).Result;
 
 
-            // stop engine
-            engine.Stop();
-
             Console.WriteLine("press any key to exit...");
             Console.ReadKey();
+
+            // stop engine
+            engine.Stop();
         }
     }
 }

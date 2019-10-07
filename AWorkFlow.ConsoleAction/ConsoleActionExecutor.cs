@@ -1,16 +1,17 @@
-﻿using AWorkFlow.Core.Models;
-using AWorkFlow.Core.Providers.Interfaces;
-using Newtonsoft.Json;
-using System;
+﻿using System;
 using System.Diagnostics;
 using System.Linq;
 using System.Threading.Tasks;
+using AWorkFlow.Core.ActionExecutors;
+using AWorkFlow.Core.Models;
+using AWorkFlow.Core.Providers.Interfaces;
+using Newtonsoft.Json;
 
 namespace AWorkFlow.ConsoleAction
 {
-    public class ConsoleActionExecutor : IExecutor
+    public class ConsoleActionExecutor : IActionExecutor
     {
-        public Task<ExecutionResultDto> Execute(IExpressionProvider expressionProvider, ActionSettingDto action)
+        public Task<ActionExecutionResultDto> Execute(IExpressionProvider expressionProvider, ActionSettingDto action)
         {
             Stopwatch sw = new Stopwatch();
             sw.Start();
@@ -39,7 +40,7 @@ namespace AWorkFlow.ConsoleAction
                 indicateResult = true;
             }
             sw.Stop();
-            return Task.FromResult(new ExecutionResultDto
+            return Task.FromResult(new ActionExecutionResultDto
             {
                 Completed = indicateResult.HasValue,
                 Success = indicateResult == true,

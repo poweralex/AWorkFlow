@@ -40,7 +40,7 @@ namespace AWorkFlow.Core.Runner
             works.ForEach(x => x.Start());
 
             // distribute jobs
-            Engine.JobManager.PushJobs(works.SelectMany(w => w.RunningJobs));
+            Engine.JobManager.PushJobs(works.SelectMany(w => w.RunningJobs)?.ToArray());
 
             return works;
         }
@@ -69,7 +69,7 @@ namespace AWorkFlow.Core.Runner
                     }
 
                     // distribute jobs
-                    Engine.JobManager.PushJobs(changedWorks.SelectMany(w => w.RunningJobs));
+                    Engine.JobManager.PushJobs(changedWorks.SelectMany(w => w.RunningJobs)?.ToArray());
                 }
                 else
                 {
