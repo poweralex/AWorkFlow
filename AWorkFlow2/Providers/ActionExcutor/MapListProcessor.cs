@@ -1,8 +1,8 @@
 ﻿using AWorkFlow2.Models;
 using Newtonsoft.Json;
-using Newtonsoft.Json.Linq;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading.Tasks;
 
 namespace AWorkFlow2.Providers.ActionExcutor
@@ -31,22 +31,25 @@ namespace AWorkFlow2.Providers.ActionExcutor
 
             try
             {
-                var list = JArray.Parse(listJson);
-                var result = new List<Dictionary<string, string>>();
+                var list = JsonHelper.GetArray(listJson, setting.Source);
+                var results = new List<Dictionary<string, string>>();
                 foreach (var listItem in list)
                 {
                     var tmpArgument = new ArgumentProvider(argument.WorkingArguments.Copy());
                     tmpArgument.ClearKey("mapItem");
                     tmpArgument.PutPrivate("mapItem", listItem.ToString());
-                    Dictionary<string, string> results = new Dictionary<string, string>();
-                    foreach (var rule in setting.Output)
+                    if (setting?.Where?.Any() != true || setting?.Where?.Any(x => x.Indicate(tmpArgument) ?? false) == true)
                     {
-                        results.Add(rule.Key, tmpArgument.Format(rule.Value));
+                        Dictionary<string, string> result = new Dictionary<string, string>();
+                        foreach (var rule in setting.Output)
+                        {
+                            result.Add(rule.Key, tmpArgument.Format(rule.Value));
+                        }
+                        results.Add(result);
                     }
-                    result.Add(results);
                 }
 
-                var resultStr = JsonConvert.SerializeObject(result);
+                var resultStr = JsonConvert.SerializeObject(results);
                 return Task.FromResult(new ActionExecuteResult
                 {
                     Success = true,
@@ -77,6 +80,10 @@ namespace AWorkFlow2.Providers.ActionExcutor
         /// source list expression
         /// </summary>
         public string Source { get; set; }
+        /// <summary>
+        /// filter condition(s)
+        /// </summary>
+        public List<ResultIndicator> Where { get; set; }
         /// <summary>
         /// mapping rules
         /// </summary>

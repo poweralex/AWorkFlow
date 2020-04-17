@@ -1,4 +1,5 @@
 ﻿using Newtonsoft.Json;
+using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 
@@ -39,10 +40,6 @@ namespace AWorkFlow2.Models.Configs
         /// </summary>
         public List<string> Tags { get; set; }
         /// <summary>
-        /// code of the begining step of the group
-        /// </summary>
-        public string GroupStartStepCode { get; set; }
-        /// <summary>
         /// loop by
         /// </summary>
         public string LoopBy { get; set; }
@@ -74,6 +71,14 @@ namespace AWorkFlow2.Models.Configs
         /// step output(s)
         /// </summary>
         public Dictionary<string, string> Output { get; set; }
+        /// <summary>
+        /// time interval between 2 pre-action execution
+        /// </summary>
+        public TimeSpan? PreActionInterval { get; set; } = TimeSpan.FromMinutes(1);
+        /// <summary>
+        /// time interval between 2 action execution
+        /// </summary>
+        public TimeSpan? ActionInterval { get; set; } = TimeSpan.FromMinutes(1);
         /// <summary>
         /// pre-action, execute before actions
         /// </summary>

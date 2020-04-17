@@ -35,28 +35,20 @@ namespace WorkFlow.Test
                 Success = true
             };
 
-            var work = new WorkingCopy
+            var work = new WorkingCopy();
+            work.Steps.Add(startStep);
+            work.Steps.Add(a1Step1Step);
+            work.Steps.Add(a2Step1Step);
+            work.Flows.Add(new WorkingCopyFlow
             {
-                Steps = new List<WorkingCopyStep>
-                {
-                    startStep,
-                    a1Step1Step,
-                    a2Step1Step,
-                },
-                Flows = new List<WorkingCopyFlow>
-                {
-                    new WorkingCopyFlow
-                    {
-                        FromStep = new WorkingCopyFlowSeed(startStep),
-                        ToStep = new WorkingCopyFlowSeed(a1Step1Step)
-                    },
-                    new WorkingCopyFlow
-                    {
-                        FromStep = new WorkingCopyFlowSeed(startStep),
-                        ToStep = new WorkingCopyFlowSeed(a2Step1Step)
-                    },
-                }
-            };
+                FromStep = new WorkingCopyFlowSeed(startStep),
+                ToStep = new WorkingCopyFlowSeed(a1Step1Step)
+            });
+            work.Flows.Add(new WorkingCopyFlow
+            {
+                FromStep = new WorkingCopyFlowSeed(startStep),
+                ToStep = new WorkingCopyFlowSeed(a2Step1Step)
+            });
             var workflow = new WorkFlowConfig
             {
                 Flows = new List<WorkFlowConfigFlow>
@@ -84,7 +76,7 @@ namespace WorkFlow.Test
                 }
             };
             var flow = workflow.Flows.FirstOrDefault(x => x.CurrentStepCode == "step1" && x.NextStepCode == "step2");
-            var groups = WorkingCopyGroup.BuildGroup(work, workflow, flow);
+            var groups = WorkingCopyGroup.BuildGroup(work, workflow, flow, string.Empty, "ut");
             Assert.IsNotNull(groups);
             Assert.AreEqual(1, groups.Count());
             var group = groups.First();
@@ -113,16 +105,8 @@ namespace WorkFlow.Test
                 Success = true,
                 PostedNext = false
             };
-            var work = new WorkingCopy
-            {
-                Steps = new List<WorkingCopyStep>
-                {
-                    startStep,
-                },
-                Flows = new List<WorkingCopyFlow>
-                {
-                }
-            };
+            var work = new WorkingCopy();
+            work.Steps.Add(startStep);
             var workflow = new WorkFlowConfig
             {
                 Flows = new List<WorkFlowConfigFlow>
@@ -150,7 +134,7 @@ namespace WorkFlow.Test
                 }
             };
             var flow = workflow.Flows.FirstOrDefault(x => x.CurrentStepCode == "step1" && x.NextStepCode == "step2");
-            var groups = WorkingCopyGroup.BuildGroup(work, workflow, flow);
+            var groups = WorkingCopyGroup.BuildGroup(work, workflow, flow, string.Empty, "ut");
             Assert.IsNotNull(groups);
             Assert.AreEqual(1, groups.Count());
             var group = groups.First();

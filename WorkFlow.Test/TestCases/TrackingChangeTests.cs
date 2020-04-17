@@ -18,6 +18,8 @@ namespace WorkFlow.Test
         public void TestInsertAndChange()
         {
             var work = new WorkingCopy();
+            Assert.IsTrue(work.Inserted);
+            Assert.IsFalse(work.Updated);
             work.BeginTime = DateTime.Now;
             Assert.IsTrue(work.Inserted);
             Assert.IsFalse(work.Updated);
@@ -47,9 +49,22 @@ namespace WorkFlow.Test
         {
             var work = new WorkingCopy();
             work.AcceptChanges();
-            work.Steps = new System.Collections.Generic.List<WorkingCopyStep>();
+            work.Arguments = new WorkingArguments();
             Assert.IsFalse(work.Inserted);
             Assert.IsFalse(work.Updated);
+        }
+
+        [Test]
+        public void TestChangeArguments()
+        {
+            var arguments = new WorkingArguments();
+            Assert.IsTrue(arguments.Inserted);
+            Assert.IsFalse(arguments.Updated);
+            arguments.AcceptChanges();
+            arguments.PrivateArguments.Add("now", $"{DateTime.UtcNow}");
+            Assert.IsFalse(arguments.Inserted);
+            Assert.IsTrue(arguments.Updated);
+
         }
     }
 }

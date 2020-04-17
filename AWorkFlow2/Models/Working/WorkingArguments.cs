@@ -8,8 +8,9 @@ namespace AWorkFlow2.Models.Working
     /// <summary>
     /// working arguments model
     /// </summary>
-    public class WorkingArguments
+    public class WorkingArguments : WorkingModelBase
     {
+        private readonly object lockObj = new object();
         /// <summary>
         /// working copy id
         /// </summary>
@@ -29,11 +30,11 @@ namespace AWorkFlow2.Models.Working
         /// <summary>
         /// public arguments(which should be pass to next)
         /// </summary>
-        public Dictionary<string, string> PublicArguments { get; private set; } = new Dictionary<string, string>();
+        public Dictionary<string, string> PublicArguments { get; private set; } = new Dictionary<string, string>(StringComparer.CurrentCultureIgnoreCase);
         /// <summary>
         /// private arguments(which should NOT be pass to next)
         /// </summary>
-        public Dictionary<string, string> PrivateArguments { get; private set; } = new Dictionary<string, string>();
+        public Dictionary<string, string> PrivateArguments { get; private set; } = new Dictionary<string, string>(StringComparer.CurrentCultureIgnoreCase);
 
         /// <summary>
         /// constructor
@@ -44,11 +45,33 @@ namespace AWorkFlow2.Models.Working
         {
             if (publicArguments != null)
             {
-                PublicArguments = publicArguments;
+                PublicArguments = new Dictionary<string, string>(publicArguments, StringComparer.CurrentCultureIgnoreCase);
             }
             if (privateArguments != null)
             {
-                PrivateArguments = privateArguments;
+                PrivateArguments = new Dictionary<string, string>(privateArguments, StringComparer.CurrentCultureIgnoreCase);
+            }
+        }
+
+        /// <summary>
+        /// set id(s) and action type
+        /// </summary>
+        /// <param name="workId"></param>
+        /// <param name="stepId"></param>
+        /// <param name="resultId"></param>
+        /// <param name="actionType"></param>
+        public void SetIds(string workId, string stepId, string resultId, string actionType)
+        {
+            lock (lockObj)
+            {
+                WorkingCopyId = workId;
+                WorkingStepId = stepId;
+                WorkingStepResultId = resultId;
+                ActionType = actionType;
+                if (PrivateArguments != null)
+                {
+                    PrivateArguments["workingStepId"] = stepId;
+                }
             }
         }
 
@@ -94,9 +117,43 @@ namespace AWorkFlow2.Models.Working
         }
 
         /// <summary>
+        /// copy "output" and expand into public arguments
+        /// </summary>
+        /// <param name="fromDic"></param>
+        /// <returns></returns>
+        public WorkingArguments CopyOutputs(Dictionary<string, string> fromDic)
+        {
+            if (fromDic == null)
+            {
+                return this;
+            }
+            // process output
+            var outputKeys = fromDic.Where(x => "output".Equals(x.Key, StringComparison.CurrentCultureIgnoreCase))?.Select(x => x.Key)?.ToList();
+            if (outputKeys?.Any() == true)
+            {
+                foreach (var outputKey in outputKeys)
+                {
+                    string outputValue = fromDic[outputKey];
+                    if (!string.IsNullOrEmpty(outputValue))
+                    {
+                        var output = JsonConvert.DeserializeObject<Dictionary<string, string>>(outputValue);
+                        foreach (var kvp in output)
+                        {
+                            PublicArguments[kvp.Key] = kvp.Value;
+                        }
+                    }
+                }
+            }
+
+            return this;
+        }
+
+        /// <summary>
         /// clear specific key
         /// </summary>
         /// <param name="key"></param>
+        /// <param name="onPublic"></param>
+        /// <param name="onPrivate"></param>
         public void ClearKey(string key, bool onPublic = true, bool onPrivate = true)
         {
             if (onPublic && PublicArguments?.ContainsKey(key) == true)
@@ -107,6 +164,15 @@ namespace AWorkFlow2.Models.Working
             {
                 PrivateArguments.Remove(key);
             }
+        }
+
+        /// <summary>
+        /// accept all changes include sub-items
+        /// </summary>
+        /// <param name="acceptAll"></param>
+        public void AcceptChanges(bool acceptAll)
+        {
+            base.AcceptChanges();
         }
 
         #region Merge

@@ -24,7 +24,7 @@ namespace AWorkFlow2.Providers.ActionExcutor
         public Task<ActionExecuteResult> Execute(string actionSetting, ArgumentProvider argument)
         {
             var setting = JsonConvert.DeserializeObject<SetValueActionSetting>(actionSetting);
-            var results = new Dictionary<string, string>();
+            var results = new Dictionary<string, JToken>();
             foreach (var kvp in setting.Set)
             {
                 var target = argument.Format(kvp.Key);
@@ -37,8 +37,25 @@ namespace AWorkFlow2.Providers.ActionExcutor
                 var obj = argument.Get(currentKey);
                 if (obj == null)
                 {
-                    argument.PutPrivate(target, argument.Format(kvp.Value));
-                    results.Add(target, argument.Get(target));
+                    string targetValue = argument.Format(kvp.Value);
+                    if (setting.AsString)
+                    {
+                        results.Add(target, targetValue);
+                    }
+                    else
+                    {
+                        var valueObj = JsonHelper.TryGetObject(targetValue, kvp.Value);
+                        if (valueObj == null)
+                        {
+                            results.Add(target, targetValue);
+                        }
+                        else
+                        {
+                            targetValue = JsonConvert.SerializeObject(valueObj);
+                            results.Add(target, valueObj);
+                        }
+                    }
+                    argument.PutPrivate(target, targetValue);
                 }
                 else
                 {
@@ -46,27 +63,27 @@ namespace AWorkFlow2.Providers.ActionExcutor
                     JToken res = null;
                     if (expression.IsArray)
                     {
-                        JArray arr = JArray.Parse(obj);
-                        res = arr[expression.Index]?.SelectToken(expression.SubExpression.Key);
+                        JArray arr = JsonHelper.GetArray(obj, currentKey);
+                        res = JsonHelper.FindToken(arr[expression.Index], expression.SubExpression.Key, currentKey);
                         if (res == null)
                         {
                             arr = FillArrayToCount(arr, expression.Index ?? 0);
                             if (arr[expression.Index] == null)
                             {
                                 arr[expression.Index] = CreateObject(new JObject(), expression.SubExpression);
-                                res = arr[expression.Index]?.SelectToken(expression.SubExpression.Key);
+                                res = JsonHelper.FindToken(arr[expression.Index], expression.SubExpression.Key, currentKey);
                             }
                         }
                         token = arr;
                     }
                     else
                     {
-                        JObject o = JObject.Parse(obj);
-                        res = o.SelectToken(expression.SubExpression.Key);
+                        JObject o = JsonHelper.GetObject(obj, currentKey);
+                        res = JsonHelper.FindToken(o, expression.SubExpression.Key, currentKey);
                         if (res == null)
                         {
                             o = CreateObject(o, expression.SubExpression);
-                            res = o.SelectToken(expression.SubExpression.Key);
+                            res = JsonHelper.FindToken(o, expression.SubExpression.Key, currentKey);
                         }
                         token = o;
                     }
@@ -75,14 +92,18 @@ namespace AWorkFlow2.Providers.ActionExcutor
                     {
                         var prop = (JProperty)res.Parent;
                         var newValue = argument.Format(kvp.Value);
-                        if (newValue.StartsWith("["))
+                        if (setting.AsString)
                         {
-                            JArray newArr = JArray.Parse(newValue);
+                            prop.Value = newValue;
+                        }
+                        else if (JsonHelper.IsArray(newValue))
+                        {
+                            JArray newArr = JsonHelper.GetArray(newValue, kvp.Value);
                             prop.Value = newArr;
                         }
-                        else if (newValue.StartsWith("{"))
+                        else if (JsonHelper.IsObject(newValue))
                         {
-                            JObject newObj = JObject.Parse(newValue);
+                            JObject newObj = JsonHelper.GetObject(newValue, kvp.Value);
                             prop.Value = newObj;
                         }
                         else
@@ -90,7 +111,7 @@ namespace AWorkFlow2.Providers.ActionExcutor
                             prop.Value = newValue;
                         }
                     }
-                    argument.PutPublic(currentKey, JsonConvert.SerializeObject(token));
+                    argument.PutPrivate(currentKey, JsonConvert.SerializeObject(token));
                     results.Add(currentKey, argument.Get(expression.CurrentKey));
                 }
             }
@@ -165,6 +186,10 @@ namespace AWorkFlow2.Providers.ActionExcutor
         /// output setting
         /// </summary>
         public Dictionary<string, string> Set { get; set; }
+        /// <summary>
+        /// set value as string
+        /// </summary>
+        public bool AsString { get; set; }
     }
 
 }

@@ -4,6 +4,7 @@ using AWorkFlow2.Providers;
 using AWorkFlow2.Providers.ActionExcutor;
 using Newtonsoft.Json;
 using NUnit.Framework;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 
@@ -26,16 +27,17 @@ namespace WorkFlow.Test
             actionContainerBuilder.RegisterType<VariableProcessActionExecutor>().Named<IActionExecutor>(ActionType.VariableProcess.ToString());
 
             processorContainerBuilder.RegisterType<SetValueProcessor>().Named<IVariableProcessor>(SetValueProcessor.Method.ToUpper());
-            processorContainerBuilder.RegisterType<CountListProcessor>().Named<IVariableProcessor>(CountListProcessor.Method.ToUpper());
             processorContainerBuilder.RegisterType<MapListProcessor>().Named<IVariableProcessor>(MapListProcessor.Method.ToUpper());
             processorContainerBuilder.RegisterType<ExpandProcessor>().Named<IVariableProcessor>(ExpandProcessor.Method.ToUpper());
             processorContainerBuilder.RegisterType<CompareNumberProcessor>().Named<IVariableProcessor>(CompareNumberProcessor.Method.ToUpper());
             processorContainerBuilder.RegisterType<CompareProcessor>().Named<IVariableProcessor>(CompareProcessor.Method.ToUpper());
+            processorContainerBuilder.RegisterType<UnitTestActionProcessor>().Named<IVariableProcessor>(UnitTestActionProcessor.Method.ToUpper());
             var processorContainer = processorContainerBuilder.Build();
             actionContainerBuilder.RegisterInstance(processorContainer);
             var actionContainer = actionContainerBuilder.Build();
             ActionExecutor actionExecutor = new ActionExecutor(actionContainer);
             _executionProvider = new WorkFlowExecutionProvider(actionExecutor);
+            _executionProvider.User = "unittest";
 
             _workflows = new List<WorkFlowConfig>();
             var workflow1 = new WorkFlowConfig
@@ -136,7 +138,7 @@ namespace WorkFlow.Test
         public void TestCreateNewWork_SelectOne()
         {
             var workRes = _executionProvider.StartNew(_workflows, _input).Result;
-            Common.ValidateOperationResult(workRes);
+            Common.ValidateOperationResultWithData(workRes);
             var works = workRes.Data;
             /// 1. select one workflow and create new work
             Assert.AreEqual(1, works.Count());
@@ -145,7 +147,8 @@ namespace WorkFlow.Test
             var work = works.First();
             var targetWorkflow = _workflows.FirstOrDefault(x => x.Code == "TestWorkFlow1");
             Assert.IsNotNull(work);
-            Assert.IsTrue(string.IsNullOrEmpty(work.Id));
+            Assert.IsTrue(!string.IsNullOrEmpty(work.Id));
+            Assert.AreEqual(targetWorkflow.Category, work.WorkFlowCategory);
             Assert.AreEqual(targetWorkflow.Code, work.WorkFlowCode);
             Assert.AreEqual(targetWorkflow.Version, work.WorkFlowVersion);
             Assert.IsNotNull(work.BeginTime);
@@ -155,9 +158,11 @@ namespace WorkFlow.Test
             Assert.IsFalse(work.OnHold);
             Assert.IsNull(work.HoldTime);
             Assert.IsNull(work.ReleaseTime);
+            Assert.IsNotNull(work.NextExecuteTime);
 
             /// 3. verify work argument(input)
             Assert.IsNotNull(work.Arguments);
+            Assert.AreEqual(work.Id, work.Arguments?.WorkingCopyId);
             Assert.AreEqual(1, work.Arguments.PublicArguments.Count);
 
             /// 4. verify 1 step(Begin) with argument(input)
@@ -169,6 +174,7 @@ namespace WorkFlow.Test
             var step = work.Steps.FirstOrDefault(x => x.Code == targetStep.Code);
             Assert.IsNotNull(step);
             Assert.IsTrue(!string.IsNullOrEmpty(step.Id));
+            Assert.AreEqual(work.Id, step.WorkingCopyId);
             Assert.AreEqual(targetStep.Code, step.Code);
             Assert.AreEqual(targetStep.Name, step.Name);
             Assert.AreEqual(targetStep.Status, step.Status);
@@ -177,13 +183,31 @@ namespace WorkFlow.Test
             Assert.AreEqual(targetStep.ByQty, step.ByQty);
             Assert.IsNotNull(step.ActiveTime);
             Assert.IsNull(step.FinishedTime);
+            Assert.IsTrue(step.IsBegin);
+            Assert.IsFalse(step.IsEnd);
+            Assert.IsFalse(step.IsRetry);
             Assert.IsFalse(step.PreActionFinished);
             Assert.IsFalse(step.Success);
             Assert.IsFalse(step.Finished);
             Assert.IsFalse(step.Cancelled);
-            Assert.IsNull(step.ActionResults);
+            Assert.IsTrue(step.PreActionResults?.Any() != true);
+            Assert.IsTrue(step.ActionResults?.Any() != true);
+            Assert.IsTrue(work.Inserted);
+            Assert.IsNotNull(work.UpdatedAt);
+            Assert.IsNotNull(work.UpdatedBy);
+            Assert.IsTrue(step.Inserted);
+            Assert.IsNotNull(step.UpdatedAt);
+            Assert.IsNotNull(step.UpdatedBy);
+
+            // argument
             Assert.IsNotNull(step.Arguments);
             Assert.AreEqual(1, step.Arguments.PublicArguments.Count);
+            Assert.AreEqual(work.Id, step.Arguments.WorkingCopyId);
+            Assert.AreEqual(step.Id, step.Arguments.WorkingStepId);
+            Assert.IsNotNull(step.Arguments.PrivateArguments);
+            Assert.IsTrue(step.Arguments.PrivateArguments.ContainsKey("workingStepId"));
+            Assert.AreEqual(step.Id, step.Arguments.PrivateArguments["workingStepId"]);
+
 
             /// 5. verify 0 flow
             Assert.IsNotNull(work.Flows);
@@ -207,8 +231,7 @@ namespace WorkFlow.Test
                 JsonConvert.SerializeObject(data)
             );
             var workRes = _executionProvider.StartNew(_workflows, input).Result;
-            Assert.IsNotNull(workRes);
-            Assert.IsFalse(workRes.Success);
+            Common.ValidateOperationResult(workRes);
             /// 1. select no workflow and create no work
             Assert.IsNull(workRes.Data);
         }
@@ -233,7 +256,7 @@ namespace WorkFlow.Test
             workflows.Add(workflow2);
 
             var workRes = _executionProvider.StartNew(workflows, _input).Result;
-            Common.ValidateOperationResult(workRes);
+            Common.ValidateOperationResultWithData(workRes);
             /// 1. select two workflow and create two new works for each workflow
             Assert.AreEqual(2, workRes.Data.Count());
             Assert.IsTrue(workRes.Data.Any(x => x.WorkFlowCode == workflow1.Code));
@@ -249,7 +272,7 @@ namespace WorkFlow.Test
         {
             var workRes = _executionProvider.StartNew(new List<WorkFlowConfig>(), _input).Result;
             Assert.IsNotNull(workRes);
-            Assert.IsFalse(workRes.Success);
+            Assert.IsTrue(workRes.Success);
             /// 1. select no workflow and create no work
             Assert.IsNull(workRes.Data);
         }
@@ -260,16 +283,23 @@ namespace WorkFlow.Test
             var workRes = _executionProvider.StartNew(_workflows, _input).Result;
             var work = workRes?.Data?.FirstOrDefault();
             var targetWorkflow = _workflows.FirstOrDefault(x => x.Code == "TestWorkFlow1");
-            Common.ValidateOperationResult(workRes);
+            Common.ValidateOperationResultWithData(workRes);
             Assert.IsNotNull(work);
             var cancelRes = _executionProvider.Cancel(work, targetWorkflow).Result;
-            Common.ValidateOperationResult(cancelRes);
+            Common.ValidateOperationResultWithData(cancelRes);
             work = cancelRes.Data;
             Assert.IsTrue(work.IsCancelled);
             Assert.IsNotNull(work.EndTime);
+            Assert.IsNotNull(work.UpdatedAt);
+            Assert.IsNotNull(work.UpdatedBy);
             foreach (var step in work.Steps)
             {
                 Assert.IsTrue(step.Cancelled || step.Finished);
+                if (step.Cancelled)
+                {
+                    Assert.IsNotNull(step.UpdatedAt);
+                    Assert.IsNotNull(step.UpdatedBy);
+                }
             }
         }
 
@@ -279,14 +309,16 @@ namespace WorkFlow.Test
             var workRes = _executionProvider.StartNew(_workflows, _input).Result;
             var work = workRes?.Data?.FirstOrDefault();
             var targetWorkflow = _workflows.FirstOrDefault(x => x.Code == work.WorkFlowCode && x.Version == work.WorkFlowVersion);
-            Common.ValidateOperationResult(workRes);
+            Common.ValidateOperationResultWithData(workRes);
             Assert.IsNotNull(work);
             var pauseRes = _executionProvider.Pause(work, targetWorkflow).Result;
-            Common.ValidateOperationResult(pauseRes);
+            Common.ValidateOperationResultWithData(pauseRes);
             work = pauseRes.Data;
             Assert.IsTrue(work.OnHold);
             Assert.IsNotNull(work.HoldTime);
             Assert.IsNull(work.ReleaseTime);
+            Assert.IsNotNull(work.UpdatedAt);
+            Assert.IsNotNull(work.UpdatedBy);
             foreach (var step in work.Steps)
             {
                 Assert.IsFalse(step.Cancelled || step.Finished);
@@ -299,23 +331,27 @@ namespace WorkFlow.Test
             var workRes = _executionProvider.StartNew(_workflows, _input).Result;
             var work = workRes?.Data?.FirstOrDefault();
             var targetWorkflow = _workflows.FirstOrDefault(x => x.Code == work.WorkFlowCode && x.Version == work.WorkFlowVersion);
-            Common.ValidateOperationResult(workRes);
+            Common.ValidateOperationResultWithData(workRes);
             Assert.IsNotNull(work);
             var pauseRes = _executionProvider.Pause(work, targetWorkflow).Result;
-            Common.ValidateOperationResult(pauseRes);
+            Common.ValidateOperationResultWithData(pauseRes);
             work = pauseRes.Data;
             Assert.IsTrue(work.OnHold);
             Assert.IsNotNull(work.HoldTime);
             Assert.IsNull(work.ReleaseTime);
+            Assert.IsNotNull(work.UpdatedAt);
+            Assert.IsNotNull(work.UpdatedBy);
             foreach (var step in work.Steps)
             {
                 Assert.IsFalse(step.Cancelled || step.Finished);
             }
             var resumeRes = _executionProvider.Resume(work, targetWorkflow).Result;
-            Common.ValidateOperationResult(resumeRes);
+            Common.ValidateOperationResultWithData(resumeRes);
             Assert.IsFalse(work.OnHold);
             Assert.IsNotNull(work.HoldTime);
             Assert.IsNotNull(work.ReleaseTime);
+            Assert.IsNotNull(work.UpdatedAt);
+            Assert.IsNotNull(work.UpdatedBy);
             foreach (var step in work.Steps)
             {
                 Assert.IsFalse(step.Cancelled || step.Finished);
@@ -326,7 +362,7 @@ namespace WorkFlow.Test
         public void TestRestartWork()
         {
             var workRes = _executionProvider.StartNew(_workflows, _input).Result;
-            Common.ValidateOperationResult(workRes);
+            Common.ValidateOperationResultWithData(workRes);
             var works = workRes.Data;
             Assert.AreEqual(1, works.Count());
             var work = works.First();
@@ -334,10 +370,12 @@ namespace WorkFlow.Test
 
             var stepCount = work.Steps.Count;
             var restartRes = _executionProvider.Restart(work, targetWorkflow).Result;
-            Common.ValidateOperationResult(restartRes);
+            Common.ValidateOperationResultWithData(restartRes);
             Assert.AreEqual(stepCount * 2, work.Steps.Count);
             Assert.AreEqual(stepCount, work.Steps.Count(x => x.Cancelled));
             Assert.AreEqual(stepCount, work.Steps.Count(x => !x.Cancelled));
+            Assert.IsNotNull(work.UpdatedAt);
+            Assert.IsNotNull(work.UpdatedBy);
         }
 
         /// <summary>
@@ -408,18 +446,19 @@ namespace WorkFlow.Test
             );
 
             var workRes = _executionProvider.StartNew(new List<WorkFlowConfig> { workflow }, _input).Result;
-            Common.ValidateOperationResult(workRes);
+            Common.ValidateOperationResultWithData(workRes);
             var works = workRes.Data;
             Assert.AreEqual(1, works.Count());
             var work = works.First();
             Assert.IsNotNull(work);
             Assert.IsNotNull(work.Steps);
             Assert.IsNotNull(work.Flows);
-            var executionResult = _executionProvider.Execute(work, workflow).Result;
-            Common.ValidateOperationResult(executionResult);
+            var executionResult = _executionProvider.Execute(work, workflow, true).Result;
+            Common.ValidateOperationResultWithData(executionResult);
             var resultWork = executionResult.Data;
 
             /// 1. verify completed work
+            Assert.AreEqual(resultWork.WorkFlowCategory, workflow.Category);
             Assert.AreEqual(resultWork.WorkFlowCode, workflow.Code);
             Assert.AreEqual(resultWork.WorkFlowVersion, workflow.Version);
             Assert.IsNotNull(resultWork.BeginTime);
@@ -430,6 +469,8 @@ namespace WorkFlow.Test
             Assert.IsFalse(resultWork.OnHold);
             Assert.IsNull(resultWork.HoldTime);
             Assert.IsNull(resultWork.ReleaseTime);
+            Assert.IsNotNull(resultWork.UpdatedAt);
+            Assert.IsNotNull(resultWork.UpdatedBy);
 
             /// 2. verify work argument(input, output)
             Assert.IsNotNull(resultWork.Arguments);
@@ -445,6 +486,7 @@ namespace WorkFlow.Test
             var stepConfig1 = workflow.Steps.FirstOrDefault(x => x.Code == step1.Code);
             Assert.IsNotNull(step1);
             Assert.IsNotNull(stepConfig1);
+            Assert.AreEqual(work.Id, step1.WorkingCopyId);
             Assert.AreEqual(stepConfig1.Code, step1.Code);
             Assert.AreEqual(stepConfig1.Name, step1.Name);
             Assert.AreEqual(stepConfig1.Status, step1.Status);
@@ -465,15 +507,22 @@ namespace WorkFlow.Test
 
             // step argument
             Assert.IsNotNull(step1.Arguments);
+            Assert.AreEqual(work.Id, step1.Arguments.WorkingCopyId);
+            Assert.AreEqual(step1.Id, step1.Arguments.WorkingStepId);
             Assert.AreEqual(2, step1.Arguments.PublicArguments.Count);
             Assert.IsTrue(step1.Arguments.PublicArguments.Any(x => x.Key == "input"));
             Assert.IsTrue(step1.Arguments.PublicArguments.Any(x => x.Key == "output"));
+            Assert.IsNotNull(step1.Arguments.PrivateArguments);
+            Assert.IsTrue(step1.Arguments.PrivateArguments.ContainsKey("now"));
+            Assert.IsTrue(step1.Arguments.PrivateArguments.ContainsKey("workingStepId"));
+            Assert.AreEqual(step1.Id, step1.Arguments.PrivateArguments["workingStepId"]);
 
             /// 5. verify step:End with arguments(input, record)
             var step2 = resultWork.Steps.FirstOrDefault(x => x.Code == "End");
             var stepConfig2 = workflow.Steps.FirstOrDefault(x => x.Code == step2.Code);
             Assert.IsNotNull(step2);
             Assert.IsNotNull(stepConfig2);
+            Assert.AreEqual(work.Id, step2.WorkingCopyId);
             Assert.AreEqual(stepConfig2.Code, step2.Code);
             Assert.AreEqual(stepConfig2.Name, step2.Name);
             Assert.AreEqual(stepConfig2.Status, step2.Status);
@@ -494,9 +543,15 @@ namespace WorkFlow.Test
 
             // step argument
             Assert.IsNotNull(step2.Arguments);
+            Assert.AreEqual(work.Id, step2.WorkingCopyId);
+            Assert.AreEqual(step2.Id, step2.Arguments.WorkingStepId);
             Assert.AreEqual(2, step2.Arguments.PublicArguments.Count);
             Assert.IsTrue(step2.Arguments.PublicArguments.Any(x => x.Key == "input"));
             Assert.IsTrue(step2.Arguments.PublicArguments.Any(x => x.Key == "record"));
+            Assert.IsNotNull(step2.Arguments.PrivateArguments);
+            Assert.IsTrue(step2.Arguments.PrivateArguments.ContainsKey("now"));
+            Assert.IsTrue(step2.Arguments.PrivateArguments.ContainsKey("workingStepId"));
+            Assert.AreEqual(step2.Id, step2.Arguments.PrivateArguments["workingStepId"]);
         }
 
         /// <summary>
@@ -620,15 +675,15 @@ namespace WorkFlow.Test
             );
 
             var workRes = _executionProvider.StartNew(new List<WorkFlowConfig> { workflow }, input).Result;
-            Common.ValidateOperationResult(workRes);
+            Common.ValidateOperationResultWithData(workRes);
             var works = workRes.Data;
             Assert.AreEqual(1, works.Count());
             var work = works.First();
             Assert.IsNotNull(work);
             Assert.IsNotNull(work.Steps);
             Assert.IsNotNull(work.Flows);
-            var executionResult = _executionProvider.Execute(work, workflow).Result;
-            Common.ValidateOperationResult(executionResult);
+            var executionResult = _executionProvider.Execute(work, workflow, true).Result;
+            Common.ValidateOperationResultWithData(executionResult);
             var resultWork = executionResult.Data;
 
             /// 1. verify completed work
@@ -803,15 +858,15 @@ namespace WorkFlow.Test
 
             #region start
             var workRes = _executionProvider.StartNew(new List<WorkFlowConfig> { workflow }, input).Result;
-            Common.ValidateOperationResult(workRes);
+            Common.ValidateOperationResultWithData(workRes);
             var works = workRes.Data;
             Assert.AreEqual(1, works.Count());
             var work = works.First();
             #endregion
 
             #region execute
-            var executionResult = _executionProvider.Execute(work, workflow).Result;
-            Common.ValidateOperationResult(executionResult);
+            var executionResult = _executionProvider.Execute(work, workflow, true).Result;
+            Common.ValidateOperationResultWithData(executionResult);
             var resultWork = executionResult.Data;
             #endregion
 
@@ -989,7 +1044,7 @@ namespace WorkFlow.Test
 
             #region start
             var workRes = _executionProvider.StartNew(new List<WorkFlowConfig> { workflow }, input).Result;
-            Common.ValidateOperationResult(workRes);
+            Common.ValidateOperationResultWithData(workRes);
             var works = workRes.Data;
             Assert.AreEqual(1, works.Count());
             var work = works.First();
@@ -997,8 +1052,8 @@ namespace WorkFlow.Test
 
             /// 1. verify 2 part to execute
             #region execute 1
-            var executionResult = _executionProvider.Execute(work, workflow).Result;
-            Common.ValidateOperationResult(executionResult);
+            var executionResult = _executionProvider.Execute(work, workflow, true).Result;
+            Common.ValidateOperationResultWithData(executionResult);
             var resultWork = executionResult.Data;
             #endregion
 
@@ -1022,15 +1077,16 @@ namespace WorkFlow.Test
             Assert.IsTrue(step2.WaitManual);
             var post1Result = _executionProvider.Success(resultWork, step1.Id, 10, new Dictionary<string, object> { { "success", "true" } }).Result;
             var post2Result = _executionProvider.Success(resultWork, step2.Id, 9, new Dictionary<string, object> { { "success", "false" } }).Result;
-            if (step1.ActionResults == null)
-            {
-                step1.ActionResults = new List<AWorkFlow2.Models.Working.WorkingCopyStepResult>();
-            }
+            Common.ValidateOperationResultWithData(post1Result);
+            Assert.IsNotNull(post1Result.Data);
+            Assert.AreEqual(work.Id, post1Result.Data.WorkingCopyId);
+            Assert.AreEqual(step1.Id, post1Result.Data.WorkingStepId);
+            Assert.IsNotNull(post1Result.Data.Arguments);
+            Assert.AreEqual(work.Id, post1Result.Data.Arguments.WorkingCopyId);
+            Assert.AreEqual(step1.Id, post1Result.Data.Arguments.WorkingStepId);
+            Assert.AreEqual(post1Result.Data.Id, post1Result.Data.Arguments.WorkingStepResultId);
+            Assert.AreEqual(ActionTypes.StepAction.ToString(), post1Result.Data.Arguments.ActionType);
             step1.ActionResults.Add(post1Result.Data);
-            if (step2.ActionResults == null)
-            {
-                step2.ActionResults = new List<AWorkFlow2.Models.Working.WorkingCopyStepResult>();
-            }
             step2.ActionResults.Add(post2Result.Data);
 
             Assert.IsNotNull(resultWork);
@@ -1046,8 +1102,8 @@ namespace WorkFlow.Test
 
             /// 1. verify 2 part to execute
             #region execute 2
-            executionResult = _executionProvider.Execute(work, workflow).Result;
-            Common.ValidateOperationResult(executionResult);
+            executionResult = _executionProvider.Execute(work, workflow, true).Result;
+            Common.ValidateOperationResultWithData(executionResult);
             resultWork = executionResult.Data;
             #endregion
 
@@ -1209,7 +1265,7 @@ namespace WorkFlow.Test
 
             #region start
             var workRes = _executionProvider.StartNew(new List<WorkFlowConfig> { workflow }, input).Result;
-            Common.ValidateOperationResult(workRes);
+            Common.ValidateOperationResultWithData(workRes);
             var works = workRes.Data;
             Assert.AreEqual(1, works.Count());
             var work = works.First();
@@ -1218,8 +1274,8 @@ namespace WorkFlow.Test
 
             /// 1. verify execute to afterProcessItem1(3 steps and 2 flows)
             #region execute 1
-            var executionResult = _executionProvider.Execute(work, workflow).Result;
-            Common.ValidateOperationResult(executionResult);
+            var executionResult = _executionProvider.Execute(work, workflow, true).Result;
+            Common.ValidateOperationResultWithData(executionResult);
             var resultWork = executionResult.Data;
             #endregion
 
@@ -1239,14 +1295,9 @@ namespace WorkFlow.Test
             Assert.IsFalse(step1.Finished);
             Assert.IsTrue(step1.WaitManual);
             var postResult = _executionProvider.Success(resultWork, step1.Id, 6, new Dictionary<string, object> { { "success", "true" } }).Result;
-            Common.ValidateOperationResult(postResult);
-            if (step1.ActionResults == null)
-            {
-                step1.ActionResults = new List<AWorkFlow2.Models.Working.WorkingCopyStepResult>();
-            }
-            step1.ActionResults.Add(postResult.Data);
-            executionResult = _executionProvider.Execute(work, workflow).Result;
-            Common.ValidateOperationResult(executionResult);
+            Common.ValidateOperationResultWithData(postResult);
+            executionResult = _executionProvider.Execute(work, workflow, true).Result;
+            Common.ValidateOperationResultWithData(executionResult);
             resultWork = executionResult.Data;
 
             /// 3. verify execute to afterManualItem1(4 steps and 3 flows)
@@ -1265,14 +1316,9 @@ namespace WorkFlow.Test
             Assert.IsFalse(step1.Finished);
             Assert.IsTrue(step1.WaitManual);
             postResult = _executionProvider.Success(resultWork, step1.Id, 4, new Dictionary<string, object> { { "success", "true" } }).Result;
-            Common.ValidateOperationResult(postResult);
-            if (step1.ActionResults == null)
-            {
-                step1.ActionResults = new List<AWorkFlow2.Models.Working.WorkingCopyStepResult>();
-            }
-            step1.ActionResults.Add(postResult.Data);
-            executionResult = _executionProvider.Execute(work, workflow).Result;
-            Common.ValidateOperationResult(executionResult);
+            Common.ValidateOperationResultWithData(postResult);
+            executionResult = _executionProvider.Execute(work, workflow, true).Result;
+            Common.ValidateOperationResultWithData(executionResult);
             resultWork = executionResult.Data;
 
             /// 5. verify execute to Finish(6 steps and 5 flows)
@@ -1406,17 +1452,17 @@ namespace WorkFlow.Test
 
             /// 1. start a work and execute process1 and post end1
             var workRes = _executionProvider.StartNew(new List<WorkFlowConfig> { workflow }, input).Result;
-            Common.ValidateOperationResult(workRes);
+            Common.ValidateOperationResultWithData(workRes);
             var work = workRes.Data.First();
             var stepBegin = work.Steps.First();
-            var executeRes = _executionProvider.Execute(work, workflow, stepBegin.Id).Result;
-            Common.ValidateOperationResult(executeRes);
+            var executeRes = _executionProvider.Execute(work, workflow, true, stepBegin.Id).Result;
+            Common.ValidateOperationResultWithData(executeRes);
             work = executeRes.Data;
             Assert.AreEqual(2, work.Steps.Count);
 
             var stepProcess1 = work.Steps.First(x => x.Code == "process");
-            executeRes = _executionProvider.Execute(work, workflow, stepProcess1.Id).Result;
-            Common.ValidateOperationResult(executeRes);
+            executeRes = _executionProvider.Execute(work, workflow, true, stepProcess1.Id).Result;
+            Common.ValidateOperationResultWithData(executeRes);
             work = executeRes.Data;
             Assert.AreEqual(3, work.Steps.Count);
             var stepEnd1 = work.Steps.FirstOrDefault(x => x.Code == "End");
@@ -1425,7 +1471,7 @@ namespace WorkFlow.Test
 
             /// 2. retry process1, post process2 and cancel end1
             var retryRes = _executionProvider.Retry(work, workflow, stepProcess1.Id).Result;
-            Common.ValidateOperationResult(retryRes);
+            Common.ValidateOperationResultWithData(retryRes);
             work = executeRes.Data;
             Assert.AreEqual(4, work.Steps.Count);
             Assert.IsTrue(stepEnd1.Cancelled);
@@ -1457,9 +1503,13 @@ namespace WorkFlow.Test
             Assert.AreEqual(2, stepProcess2.Arguments.PublicArguments.Count);
             Assert.IsTrue(stepProcess2.Arguments.PublicArguments.Any(x => x.Key == "input"));
             Assert.IsTrue(stepProcess2.Arguments.PublicArguments.Any(x => x.Key == "record"));
+            Assert.IsNotNull(stepProcess2.Arguments.PrivateArguments);
+            Assert.IsTrue(stepProcess2.Arguments.PrivateArguments.ContainsKey("workingStepId"));
+            Assert.AreEqual(stepProcess2.Id, stepProcess2.Arguments.PrivateArguments["workingStepId"]);
+
             /// 4. execute to end
-            executeRes = _executionProvider.Execute(work, workflow).Result;
-            Common.ValidateOperationResult(executeRes);
+            executeRes = _executionProvider.Execute(work, workflow, true).Result;
+            Common.ValidateOperationResultWithData(executeRes);
             work = executeRes.Data;
             Assert.IsTrue(work.IsFinished);
             /// 5. verify 5 working steps(Begin, process1, End1, process2, end2)
@@ -1468,18 +1518,430 @@ namespace WorkFlow.Test
             /// 6. verify 3 working flows
             Assert.IsNotNull(work.Flows);
             Assert.AreEqual(3, work.Flows.Count);
-            var flowBeginToProcess = work.Flows.FirstOrDefault(x => x.FromStep.GetSteps().First().Code == "Begin");
-            var flowProcess1ToEnd1 = work.Flows.FirstOrDefault(x => x.FromStep.GetSteps().First().Id == stepProcess1.Id);
-            var flowProcess2ToEnd2 = work.Flows.FirstOrDefault(x => x.FromStep.GetSteps().First().Id == stepProcess2.Id);
+            var flowBeginToProcess = work.Flows.FirstOrDefault(x => x.FromStep?.Steps?.FirstOrDefault()?.Code == "Begin");
+            var flowProcess1ToEnd1 = work.Flows.FirstOrDefault(x => x.FromStep?.Steps?.FirstOrDefault()?.Id == stepProcess1.Id);
+            var flowProcess2ToEnd2 = work.Flows.FirstOrDefault(x => x.FromStep?.Steps?.FirstOrDefault()?.Id == stepProcess2.Id);
             Assert.IsNotNull(flowBeginToProcess);
-            Assert.AreEqual(1, flowBeginToProcess.FromStep.StepGroup.Count);
-            Assert.AreEqual(2, flowBeginToProcess.ToStep.StepGroup.Count);
+            Assert.AreEqual(1, flowBeginToProcess.FromStep.Steps.Count);
+            Assert.AreEqual(2, flowBeginToProcess.ToStep.Steps.Count);
             Assert.IsNotNull(flowProcess1ToEnd1);
-            Assert.AreEqual(1, flowProcess1ToEnd1.FromStep.StepGroup.Count);
-            Assert.AreEqual(1, flowProcess1ToEnd1.ToStep.StepGroup.Count);
+            Assert.AreEqual(1, flowProcess1ToEnd1.FromStep.Steps.Count);
+            Assert.AreEqual(1, flowProcess1ToEnd1.ToStep.Steps.Count);
             Assert.IsNotNull(flowProcess2ToEnd2);
-            Assert.AreEqual(1, flowProcess2ToEnd2.FromStep.StepGroup.Count);
-            Assert.AreEqual(1, flowProcess2ToEnd2.ToStep.StepGroup.Count);
+            Assert.AreEqual(1, flowProcess2ToEnd2.FromStep.Steps.Count);
+            Assert.AreEqual(1, flowProcess2ToEnd2.ToStep.Steps.Count);
+        }
+
+        [Test]
+        public void TestPreActionShouldNotTriggerOnSuccess()
+        {
+            #region data
+            var workflow = new WorkFlowConfig
+            {
+                Category = "testing",
+                Code = "TestWorkFlow1",
+                Desc = "TestWorkFlow1",
+                Name = "TestWorkFlow1",
+                Version = 1,
+                Steps = new List<WorkFlowConfigStep>
+                {
+                    new WorkFlowConfigStep
+                    {
+                        Code = "Begin",
+                        IsBegin = true,
+                        Status = "record_incoming",
+                        StatusScope = "order",
+                        StatusId = "{{input.merchantOrderId}}",
+                        Output = new Dictionary<string, string>
+                        {
+                            { "record","{{input}}"}
+                        }
+                    },
+                    new WorkFlowConfigStep
+                    {
+                        Code = "processItem",
+                        Status = "processed_item",
+                        StatusScope = "item",
+                        StatusId = "{{item.itemId}}",
+                        PreActions = new List<WorkFlowActionSetting>
+                        {
+                            new WorkFlowActionSetting
+                            {
+                                 Type = ActionType.VariableProcess,
+                                  ActionConfig = new
+                                  {
+                                      Method = UnitTestActionProcessor.Method,
+                                      Key = Guid.NewGuid(),
+                                      ResultSequence = new List<bool>{ true }
+                                  }
+                            }
+                        },
+                        Manual = true
+                    },
+                    new WorkFlowConfigStep
+                    {
+                        Code = "End",
+                        IsEnd = true,
+                        Status = "order_completed",
+                        StatusScope = "order",
+                        StatusId = "{{input.merchantOrderId}}",
+                        Output = new Dictionary<string, string>
+                        {
+                            { "record","{{record[0]}}"}
+                        }
+                    }
+                },
+                Flows = new List<WorkFlowConfigFlow>
+                {
+                    new WorkFlowConfigFlow
+                    {
+                        CurrentStepCode = "Begin",
+                        NextStepCode = "processItem",
+                        NextOn = FlowNextType.OnSuccess
+                    },
+                    new WorkFlowConfigFlow
+                    {
+                        CurrentStepCode = "processItem",
+                        NextStepCode = "End",
+                        NextOn = FlowNextType.OnSuccess,
+                        GroupStartStepCode = "Begin"
+                    }
+                },
+                Output = new Dictionary<string, string> {
+                    { "completedOrderId", "{{record.orderId}}"}
+                }
+            };
+            var data = new
+            {
+                orderId = "123",
+                merchantOrderId = "m123",
+                orderType = "A",
+                items = new List<dynamic>
+                {
+                    new { itemId = "item1", qty = 1 },
+                    new { itemId = "item2", qty = 2 }
+                }
+            };
+            var input = JsonConvert.DeserializeObject<Dictionary<string, object>>(
+                JsonConvert.SerializeObject(data)
+            );
+            #endregion
+
+            var startWorkRes = _executionProvider.StartNew(new List<WorkFlowConfig> { workflow }, input).Result;
+            Common.ValidateOperationResultWithData(startWorkRes);
+
+            var work = startWorkRes.Data?.FirstOrDefault();
+            Assert.IsNotNull(work);
+            var executionRes = _executionProvider.Execute(work, workflow, true).Result;
+            Common.ValidateOperationResultWithData(executionRes);
+            work = executionRes.Data;
+            // work should not be finished, only 2steps existed: begin -> processItem
+            Assert.IsNotNull(work);
+            Assert.IsFalse(work.IsFinished);
+            Assert.AreEqual(2, work.Steps.Count);
+            var stepProcessItem = work.Steps.FirstOrDefault(x => x.Code == "processItem");
+            Assert.IsTrue(stepProcessItem.PreActionFinished);
+            Assert.IsFalse(stepProcessItem.ActionFinished);
+            Assert.IsFalse(stepProcessItem.Finished);
+            Assert.IsFalse(stepProcessItem.Success);
+        }
+
+        [Test]
+        public void TestPreActionReachRetryLimit()
+        {
+            #region data
+            var workflow = new WorkFlowConfig
+            {
+                Category = "testing",
+                Code = "TestWorkFlow1",
+                Desc = "TestWorkFlow1",
+                Name = "TestWorkFlow1",
+                Version = 1,
+                Steps = new List<WorkFlowConfigStep>
+                {
+                    new WorkFlowConfigStep
+                    {
+                        Code = "Begin",
+                        IsBegin = true,
+                        Status = "record_incoming",
+                        StatusScope = "order",
+                        StatusId = "{{input.merchantOrderId}}",
+                        Output = new Dictionary<string, string>
+                        {
+                            { "record","{{input}}"}
+                        }
+                    },
+                    new WorkFlowConfigStep
+                    {
+                        Code = "processItem",
+                        Status = "processed_item",
+                        StatusScope = "item",
+                        StatusId = "{{item.itemId}}",
+                        RetryLimit = 2,
+                        PreActions = new List<WorkFlowActionSetting>
+                        {
+                            new WorkFlowActionSetting
+                            {
+                                 Type = ActionType.VariableProcess,
+                                  ActionConfig = new
+                                  {
+                                      Method = UnitTestActionProcessor.Method,
+                                      Key = Guid.NewGuid(),
+                                      ResultSequence = new List<bool>{ false, false, false, false, false,false,false,false  }
+                                  }
+                            }
+                        },
+                        Manual = true
+                    },
+                    new WorkFlowConfigStep
+                    {
+                        Code = "onProcessItemFailed",
+                        Status = "onProcessItemFailed",
+                    },
+                    new WorkFlowConfigStep
+                    {
+                        Code = "End",
+                        IsEnd = true,
+                        Status = "order_completed",
+                        StatusScope = "order",
+                        StatusId = "{{input.merchantOrderId}}",
+                        Output = new Dictionary<string, string>
+                        {
+                            { "record","{{record[0]}}"}
+                        }
+                    }
+                },
+                Flows = new List<WorkFlowConfigFlow>
+                {
+                    new WorkFlowConfigFlow
+                    {
+                        CurrentStepCode = "Begin",
+                        NextStepCode = "processItem",
+                        NextOn = FlowNextType.OnSuccess
+                    },
+                    new WorkFlowConfigFlow
+                    {
+                        CurrentStepCode = "processItem",
+                        NextStepCode = "End",
+                        NextOn = FlowNextType.OnSuccess,
+                        GroupStartStepCode = "Begin"
+                    },
+                    new WorkFlowConfigFlow
+                    {
+                        CurrentStepCode = "processItem",
+                        NextStepCode = "onProcessItemFailed",
+                        NextOn = FlowNextType.OnFail
+                    }
+                },
+                Output = new Dictionary<string, string> {
+                    { "completedOrderId", "{{record.orderId}}"}
+                }
+            };
+            var data = new
+            {
+                orderId = "123",
+                merchantOrderId = "m123",
+                orderType = "A",
+                items = new List<dynamic>
+                {
+                    new { itemId = "item1", qty = 1 },
+                    new { itemId = "item2", qty = 2 }
+                }
+            };
+            var input = JsonConvert.DeserializeObject<Dictionary<string, object>>(
+                JsonConvert.SerializeObject(data)
+            );
+            #endregion
+
+            var startWorkRes = _executionProvider.StartNew(new List<WorkFlowConfig> { workflow }, input).Result;
+            Common.ValidateOperationResultWithData(startWorkRes);
+
+            var work = startWorkRes.Data?.FirstOrDefault();
+            Assert.IsNotNull(work);
+
+            // fail 1
+            var executionRes = _executionProvider.Execute(work, workflow, true).Result;
+            Common.ValidateOperationResultWithData(executionRes);
+            work = executionRes.Data;
+            // work should not be finished, only 2steps existed: begin -> processItem
+            Assert.IsNotNull(work);
+            Assert.IsFalse(work.IsFinished);
+            Assert.AreEqual(2, work.Steps.Count);
+            var stepProcessItem = work.Steps.FirstOrDefault(x => x.Code == "processItem");
+            Assert.IsFalse(stepProcessItem.PreActionFinished);
+            Assert.IsFalse(stepProcessItem.ActionFinished);
+            Assert.IsFalse(stepProcessItem.Finished);
+            Assert.IsFalse(stepProcessItem.Success);
+            Assert.AreEqual(1, stepProcessItem.PreActionExecutedCount);
+
+            // fail 2
+            executionRes = _executionProvider.Execute(work, workflow, true).Result;
+            Common.ValidateOperationResultWithData(executionRes);
+            work = executionRes.Data;
+            // work should not be finished, only 2steps existed: begin -> processItem
+            Assert.IsNotNull(work);
+            Assert.IsFalse(work.IsFinished);
+            Assert.AreEqual(2, work.Steps.Count);
+            stepProcessItem = work.Steps.FirstOrDefault(x => x.Code == "processItem");
+            Assert.IsFalse(stepProcessItem.PreActionFinished);
+            Assert.IsFalse(stepProcessItem.ActionFinished);
+            Assert.IsFalse(stepProcessItem.Finished);
+            Assert.IsFalse(stepProcessItem.Success);
+            Assert.AreEqual(2, stepProcessItem.PreActionExecutedCount);
+
+            // reach rety limit
+            executionRes = _executionProvider.Execute(work, workflow, true).Result;
+            Common.ValidateOperationResultWithData(executionRes);
+            work = executionRes.Data;
+            // work should not be finished, only 2steps existed: begin -> processItem -> onProcessItemFailed
+            Assert.IsNotNull(work);
+            Assert.IsFalse(work.IsFinished);
+            Assert.AreEqual(3, work.Steps.Count);
+            stepProcessItem = work.Steps.FirstOrDefault(x => x.Code == "processItem");
+            Assert.IsTrue(stepProcessItem.PreActionFinished);
+            Assert.IsTrue(stepProcessItem.ActionFinished);
+            Assert.IsTrue(stepProcessItem.Finished);
+            Assert.IsFalse(stepProcessItem.Success);
+            Assert.AreEqual(2, stepProcessItem.PreActionExecutedCount);
+            Assert.IsTrue(work.Steps.Any(x => x.Code == "onProcessItemFailed"));
+        }
+
+        [Test]
+        public void TestPreActionFailed()
+        {
+            #region data
+            var workflow = new WorkFlowConfig
+            {
+                Category = "testing",
+                Code = "TestWorkFlow1",
+                Desc = "TestWorkFlow1",
+                Name = "TestWorkFlow1",
+                Version = 1,
+                Steps = new List<WorkFlowConfigStep>
+                {
+                    new WorkFlowConfigStep
+                    {
+                        Code = "Begin",
+                        IsBegin = true,
+                        Status = "record_incoming",
+                        StatusScope = "order",
+                        StatusId = "{{input.merchantOrderId}}",
+                        Output = new Dictionary<string, string>
+                        {
+                            { "record","{{input}}"}
+                        }
+                    },
+                    new WorkFlowConfigStep
+                    {
+                        Code = "processItem",
+                        Status = "processed_item",
+                        StatusScope = "item",
+                        StatusId = "{{item.itemId}}",
+                        RetryLimit = 2,
+                        PreActions = new List<WorkFlowActionSetting>
+                        {
+                            new WorkFlowActionSetting
+                            {
+                                Type = ActionType.VariableProcess,
+                                ActionConfig = new
+                                {
+                                    Method = UnitTestActionProcessor.Method,
+                                    Key = Guid.NewGuid(),
+                                    ResultSequence = new List<bool>{ false, false, false, false, false,false,false,false  },
+                                    DirectFail = true
+                                }
+                            }
+                        },
+                        Manual = true
+                    },
+                    new WorkFlowConfigStep
+                    {
+                        Code = "onProcessItemFailed",
+                        Status = "onProcessItemFailed",
+                    },
+                    new WorkFlowConfigStep
+                    {
+                        Code = "End",
+                        IsEnd = true,
+                        Status = "order_completed",
+                        StatusScope = "order",
+                        StatusId = "{{input.merchantOrderId}}",
+                        Output = new Dictionary<string, string>
+                        {
+                            { "record","{{record[0]}}"}
+                        }
+                    }
+                },
+                Flows = new List<WorkFlowConfigFlow>
+                {
+                    new WorkFlowConfigFlow
+                    {
+                        CurrentStepCode = "Begin",
+                        NextStepCode = "processItem",
+                        NextOn = FlowNextType.OnSuccess
+                    },
+                    new WorkFlowConfigFlow
+                    {
+                        CurrentStepCode = "processItem",
+                        NextStepCode = "End",
+                        NextOn = FlowNextType.OnSuccess,
+                        GroupStartStepCode = "Begin"
+                    },
+                    new WorkFlowConfigFlow
+                    {
+                        CurrentStepCode = "processItem",
+                        NextStepCode = "onProcessItemFailed",
+                        NextOn = FlowNextType.OnFail
+                    },
+                    new WorkFlowConfigFlow
+                    {
+                        CurrentStepCode = "onProcessItemFailed",
+                        NextStepCode = "End",
+                        NextOn = FlowNextType.OnSuccess
+                    }
+                },
+                Output = new Dictionary<string, string> {
+                    { "completedOrderId", "{{record.orderId}}"}
+                }
+            };
+            var data = new
+            {
+                orderId = "123",
+                merchantOrderId = "m123",
+                orderType = "A",
+                items = new List<dynamic>
+                {
+                    new { itemId = "item1", qty = 1 },
+                    new { itemId = "item2", qty = 2 }
+                }
+            };
+            var input = JsonConvert.DeserializeObject<Dictionary<string, object>>(
+                JsonConvert.SerializeObject(data)
+            );
+            #endregion
+
+            var startWorkRes = _executionProvider.StartNew(new List<WorkFlowConfig> { workflow }, input).Result;
+            Common.ValidateOperationResultWithData(startWorkRes);
+
+            var work = startWorkRes.Data?.FirstOrDefault();
+            Assert.IsNotNull(work);
+
+            // fail 1
+            var executionRes = _executionProvider.Execute(work, workflow, true).Result;
+            Common.ValidateOperationResultWithData(executionRes);
+            work = executionRes.Data;
+            // work should not be finished, only 2steps existed: begin -> processItem
+            Assert.IsNotNull(work);
+            Assert.IsTrue(work.IsFinished);
+            Assert.AreEqual(4, work.Steps.Count);
+            var stepProcessItem = work.Steps.FirstOrDefault(x => x.Code == "processItem");
+            Assert.IsTrue(stepProcessItem.PreActionFinished);
+            Assert.IsTrue(stepProcessItem.ActionFinished);
+            Assert.IsTrue(stepProcessItem.Finished);
+            Assert.IsFalse(stepProcessItem.Success);
+            Assert.AreEqual(1, stepProcessItem.PreActionExecutedCount);
+
+            Assert.IsTrue(work.Steps.Any(x => x.Code == "onProcessItemFailed"));
         }
     }
 }

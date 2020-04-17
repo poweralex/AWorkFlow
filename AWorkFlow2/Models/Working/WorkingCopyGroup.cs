@@ -1,36 +1,115 @@
 ﻿using AWorkFlow2.Models.Configs;
+using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 
 namespace AWorkFlow2.Models.Working
 {
+    /// <summary>
+    /// data model of working group
+    /// </summary>
     public class WorkingCopyGroup : WorkingModelBase
     {
-        public string Id { get; set; }
+        /// <summary>
+        /// Group id
+        /// </summary>
+        public string Id { get; set; } = Guid.NewGuid().ToString();
+        /// <summary>
+        /// work id
+        /// </summary>
+        public string WorkingCopyId { get; set; }
+        /// <summary>
+        /// workflow flow id
+        /// </summary>
         public string FLowId { get; set; }
+        /// <summary>
+        /// group start step code
+        /// </summary>
         public string StartStepCode { get; set; }
+        /// <summary>
+        /// group end step code
+        /// </summary>
         public string EndStepCode { get; set; }
-        public bool Fulfilled { get; private set; }
-        public bool AnySuccess => Steps?.Where(x => string.Equals(x.Code, EndStepCode, System.StringComparison.CurrentCultureIgnoreCase))?.Any(x => x.ActionFinished && x.Success) ?? false;
-        public bool AnyFail => Steps?.Where(x => string.Equals(x.Code, EndStepCode, System.StringComparison.CurrentCultureIgnoreCase))?.Any(x => x.ActionFinished && !x.Success) ?? false;
-        public bool AllSuccess => Fulfilled && (Steps?.Where(x => string.Equals(x.Code, EndStepCode, System.StringComparison.CurrentCultureIgnoreCase))?.Any(x => x.ActionFinished && x.Success) ?? false);
-        public bool AllFail => Fulfilled && (Steps?.Where(x => string.Equals(x.Code, EndStepCode, System.StringComparison.CurrentCultureIgnoreCase))?.Any(x => x.ActionFinished && !x.Success) ?? false);
+        /// <summary>
+        /// if group fully fulfilled
+        /// </summary>
+        public bool Fulfilled { get; set; }
+        /// <summary>
+        /// if this group matchs any success
+        /// </summary>
+        [IgnoreTracking]
+        public bool AnySuccess => EndSteps?.Where(x => x != null)?.Any(x => x.ActionFinished && x.Success) ?? false;
+        /// <summary>
+        /// if this group matchs any fail
+        /// </summary>
+        [IgnoreTracking]
+        public bool AnyFail => EndSteps?.Where(x => x != null)?.Any(x => x.ActionFinished && !x.Success) ?? false;
+        /// <summary>
+        /// if this group matchs all success
+        /// </summary>
+        [IgnoreTracking]
+        public bool AllSuccess => Fulfilled && (EndSteps?.Where(x => x != null)?.All(x => x.ActionFinished && x.Success) ?? false);
+        /// <summary>
+        /// if this group matchs all fail
+        /// </summary>
+        [IgnoreTracking]
+        public bool AllFail => Fulfilled && (EndSteps?.Where(x => x != null)?.All(x => x.ActionFinished && !x.Success) ?? false);
+        /// <summary>
+        /// if this group posted next
+        /// </summary>
         public bool PostedNext { get; set; }
+        /// <summary>
+        /// if this group is finished
+        /// </summary>
+        [IgnoreTracking]
         public bool Finished => Fulfilled && PostedNext;
-        public List<WorkingCopyStep> Steps { get; set; }
+        /// <summary>
+        /// steps belong to this group
+        /// </summary>
+        [IgnoreTracking]
+        public WorkingCopyStepCollection Steps { get; private set; } = new WorkingCopyStepCollection(false);
+        /// <summary>
+        /// group end steps
+        /// </summary>
+        [IgnoreTracking]
+        public IEnumerable<WorkingCopyStep> EndSteps => Steps?.Where(x => x?.Cancelled != true && string.Equals(x?.Code, EndStepCode, StringComparison.CurrentCultureIgnoreCase));
 
-        public WorkingCopyGroup ReorganizeGroup(WorkingCopy work, WorkFlowConfig workflow)
+        /// <summary>
+        /// refresh group
+        /// </summary>
+        /// <param name="work"></param>
+        /// <param name="workflow"></param>
+        /// <returns></returns>
+        public WorkingCopyGroup RefreshGroup(WorkingCopy work, WorkFlowConfig workflow)
         {
             var currentSteps = Steps.ToList();
-            currentSteps.ForEach(startStep => Steps.AddRange(FindSteps(work, startStep, EndStepCode)));
+            currentSteps.ForEach(startStep =>
+                Steps.AddRange(
+                    FindSteps(work, startStep, EndStepCode)
+                    .Where(newStep => !Steps.Any(step => step.Id == newStep.Id))
+                    )
+                );
 
-            Fulfilled = Steps?.All(x => x.ActionFinished && (x.PostedNext || string.Equals(x.Code, EndStepCode, System.StringComparison.CurrentCultureIgnoreCase))) ?? false;
+            Fulfilled = (Steps?.Any(x => !x.Cancelled && string.Equals(x.Code, EndStepCode, System.StringComparison.CurrentCultureIgnoreCase)) ?? false)
+                && (Steps?.All(x => x.ActionFinished && (x.PostedNext || string.Equals(x.Code, EndStepCode, System.StringComparison.CurrentCultureIgnoreCase))) ?? false);
             return this;
         }
 
-        public static IEnumerable<WorkingCopyGroup> BuildGroup(WorkingCopy work, WorkFlowConfig workflow, WorkFlowConfigFlow flow)
+        /// <summary>
+        /// build a group
+        /// </summary>
+        /// <param name="work"></param>
+        /// <param name="workflow"></param>
+        /// <param name="flow"></param>
+        /// <param name="startStepId"></param>
+        /// <param name="user"></param>
+        /// <returns></returns>
+        public static IEnumerable<WorkingCopyGroup> BuildGroup(WorkingCopy work, WorkFlowConfig workflow, WorkFlowConfigFlow flow, string startStepId, string user)
         {
-            var startSteps = work.Steps.Where(x => x.Code == flow.GroupStartStepCode);
+            var startSteps = work.Steps.Where(x => x.Code == flow.GroupStartStepCode
+            && (string.IsNullOrEmpty(startStepId) || x.Id == startStepId))
+            .ToList();
             var groups = startSteps.Select(startStep =>
             {
                 var group = new WorkingCopyGroup
@@ -38,13 +117,11 @@ namespace AWorkFlow2.Models.Working
                     FLowId = flow.Id,
                     StartStepCode = flow.GroupStartStepCode,
                     EndStepCode = flow.CurrentStepCode,
-                    Steps = new List<WorkingCopyStep>
-                    {
-                        startStep
-                    }
+                    UpdatedAt = DateTime.UtcNow,
+                    UpdatedBy = user
                 };
-
-                group.Steps.AddRange(FindSteps(work, startStep, flow.CurrentStepCode));
+                group.Steps.Add(startStep);
+                group.RefreshGroup(work, workflow);
 
                 return group;
             });
@@ -59,7 +136,7 @@ namespace AWorkFlow2.Models.Working
             {
                 return steps;
             }
-            var nextSteps = work.Flows.Where(x => x.FromStep.Contains(startStep)).SelectMany(x => x.ToStep.GetSteps()).ToList().Distinct();
+            var nextSteps = work.Flows.Where(x => x.FromStep.Contains(startStep)).SelectMany(x => x.ToStep?.Steps).ToList().Distinct();
 
             steps.AddRange(nextSteps);
             if (nextSteps?.Any() == true)
@@ -68,6 +145,135 @@ namespace AWorkFlow2.Models.Working
             }
             return steps;
         }
+
+        /// <summary>
+        /// accept all changes include sub-items
+        /// </summary>
+        /// <param name="acceptAll"></param>
+        public void AcceptChanges(bool acceptAll)
+        {
+            base.AcceptChanges();
+        }
+    }
+
+    /// <summary>
+    /// working group collection
+    /// </summary>
+    public class WorkingCopyGroupCollection : ICollection<WorkingCopyGroup>
+    {
+        private readonly object lockObj = new object();
+        private readonly List<WorkingCopyGroup> groups = new List<WorkingCopyGroup>();
+        private readonly bool _manageIds = true;
+        private string _workId = string.Empty;
+        /// <summary>
+        /// constructor
+        /// </summary>
+        /// <param name="manageIds"></param>
+        public WorkingCopyGroupCollection(bool manageIds = true)
+        {
+            _manageIds = manageIds;
+        }
+
+        /// <summary>
+        /// set ids for this collection
+        /// </summary>
+        /// <param name="workId"></param>
+        public void SetIds(string workId)
+        {
+            _workId = workId;
+            if (_manageIds)
+            {
+                if (groups?.Any() == true)
+                {
+                    lock (lockObj)
+                    {
+                        foreach (var group in groups)
+                        {
+                            group.WorkingCopyId = _workId;
+                        }
+                    }
+                }
+            }
+        }
+        /// <summary>
+        /// count
+        /// </summary>
+        public int Count => groups.Count;
+
+        /// <summary>
+        /// is readyonly
+        /// </summary>
+        public bool IsReadOnly => false;
+
+        /// <summary>
+        /// add
+        /// </summary>
+        /// <param name="item"></param>
+        public void Add(WorkingCopyGroup item)
+        {
+            if (_manageIds)
+            {
+                item.WorkingCopyId = _workId;
+            }
+            groups.Add(item);
+        }
+        /// <summary>
+        /// add range
+        /// </summary>
+        /// <param name="items"></param>
+        public void AddRange(IEnumerable<WorkingCopyGroup> items)
+        {
+            if (_manageIds)
+            {
+                groups.AddRange(items.Select(x =>
+                {
+                    x.WorkingCopyId = _workId;
+                    return x;
+                }));
+            }
+            else
+            {
+                groups.AddRange(items);
+            }
+        }
+
+        /// <summary>
+        /// clear
+        /// </summary>
+        public void Clear() => groups.Clear();
+
+        /// <summary>
+        /// contains
+        /// </summary>
+        /// <param name="item"></param>
+        /// <returns></returns>
+        public bool Contains(WorkingCopyGroup item) => groups.Contains(item);
+
+        /// <summary>
+        /// copyto array
+        /// </summary>
+        /// <param name="array"></param>
+        /// <param name="arrayIndex"></param>
+        public void CopyTo(WorkingCopyGroup[] array, int arrayIndex) => groups.CopyTo(array, arrayIndex);
+
+        /// <summary>
+        /// get enumerator
+        /// </summary>
+        /// <returns></returns>
+        public IEnumerator<WorkingCopyGroup> GetEnumerator() => groups.GetEnumerator();
+
+        /// <summary>
+        /// remove item
+        /// </summary>
+        /// <param name="item"></param>
+        /// <returns></returns>
+        public bool Remove(WorkingCopyGroup item) => groups.Remove(item);
+
+        /// <summary>
+        /// get enumerator
+        /// </summary>
+        /// <returns></returns>
+        IEnumerator IEnumerable.GetEnumerator() => groups.GetEnumerator();
     }
 
 }

@@ -8,7 +8,7 @@ using System.Threading.Tasks;
 namespace AWorkFlow2.Providers.ActionExcutor
 {
     /// <summary>
-    /// Maps a list to a new list
+    /// groups a list to a new list of [{"groupKey":"","groupItems":[]}]
     /// </summary>
     public class GroupListProcessor : IVariableProcessor
     {
@@ -31,7 +31,7 @@ namespace AWorkFlow2.Providers.ActionExcutor
 
             try
             {
-                var list = JArray.Parse(listJson);
+                var list = JsonHelper.GetArray(listJson, setting.Source);
                 var result = new List<Dictionary<string, string>>();
                 Dictionary<string, JArray> groupData = new Dictionary<string, JArray>();
                 foreach (var listItem in list)

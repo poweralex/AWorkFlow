@@ -9,10 +9,15 @@ namespace WorkFlow.Test
 {
     class Common
     {
-        public static void ValidateOperationResult<T>(OperationResult<T> result)
+        public static void ValidateOperationResult(OperationResult result)
         {
             Assert.IsNotNull(result);
             Assert.IsTrue(result.Success);
+        }
+
+        public static void ValidateOperationResultWithData<T>(OperationResult<T> result)
+        {
+            ValidateOperationResult(result);
             Assert.IsNotNull(result.Data);
         }
 
@@ -61,6 +66,23 @@ namespace WorkFlow.Test
                 var key1 = keySelector(o1);
                 var o2 = list2.FirstOrDefault(x => keySelector(x) == key1);
                 CompareObject(o1, o2);
+            }
+        }
+
+        public static void CompareTimeApproximate(DateTime? dt1, DateTime? dt2)
+        {
+            if (dt1 == null && dt2 == null)
+            {
+                return;
+            }
+            else
+            {
+                Assert.IsNotNull(dt1);
+                Assert.IsNotNull(dt2);
+                if (Math.Abs((dt2.Value - dt1.Value).TotalSeconds) > 2)
+                {
+                    Assert.Fail($"{dt1} <> {dt2}");
+                }
             }
         }
     }

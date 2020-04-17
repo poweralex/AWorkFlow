@@ -2,7 +2,11 @@
 {
     public enum ActionTypes
     {
+        WorkData,
+        WorkSelector,
+        StepData,
         StepPreAction,
-        StepAction
+        StepAction,
+        FlowSelector
     }
 }

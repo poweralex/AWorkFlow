@@ -65,6 +65,7 @@ namespace AWorkFlow2.Providers.ActionExcutor
                 else
                 {
                     actionExecuteResult.Success = true;
+                    actionExecuteResult.Fail = false;
                 }
 
                 return actionExecuteResult;
@@ -77,26 +78,44 @@ namespace AWorkFlow2.Providers.ActionExcutor
 
         private async Task<OperationResult<string>> CallHttp(ArgumentProvider argument)
         {
-            var call = HttpProvider.CallUrl(argument.Format(Settings.Url));
+            var url = argument.Format(Settings.Url);
+            var call = HttpProvider.CallUrl(url);
+            var headers = new List<KeyValuePair<string, string>>();
             if (Settings.Headers?.Any() == true)
             {
                 foreach (var kvp in Settings.Headers)
                 {
-                    call.WithHeader(kvp.Key, argument.Format(kvp.Value));
+                    var headerValue = argument.Format(kvp.Value);
+                    headers.Add(new KeyValuePair<string, string>(kvp.Key, headerValue));
+                    call.WithHeader(kvp.Key, headerValue);
                 }
             }
             call.AcceptStatusCodes(Settings.SuccessStatusCodes.Select(x => (HttpStatusCode)x).ToArray());
+            string body = string.Empty;
             if (!string.IsNullOrEmpty(Settings.Body))
             {
-                call.WithJsonBody(argument.Format(Settings.Body).ToJsonObject());
+                body = argument.Format(Settings.Body);
+                call.WithJsonBody(body.ToJsonObject());
             }
             if (Settings.FormData?.Any() == true)
             {
+                var formData = new List<KeyValuePair<string, string>>();
                 foreach (var kvp in Settings.FormData)
                 {
-                    call.WithHttpParameter(kvp.Key, kvp.Value);
+                    var formValue = argument.Format(kvp.Value);
+                    formData.Add(new KeyValuePair<string, string>(kvp.Key, formValue));
+                    call.WithHttpParameter(kvp.Key, formValue);
                 }
+                body = JsonConvert.SerializeObject(formData);
             }
+            var executionData = new
+            {
+                Settings.Method,
+                url,
+                headers,
+                body
+            };
+            argument.PutPrivate(nameof(executionData), JsonConvert.SerializeObject(executionData));
 
             if ("get".Equals(Settings.Method, StringComparison.CurrentCultureIgnoreCase))
             {

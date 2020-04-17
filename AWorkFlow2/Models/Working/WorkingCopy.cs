@@ -1,5 +1,6 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using AWorkFlow2.Models.Configs;
+using System;
+using System.Linq;
 
 namespace AWorkFlow2.Models.Working
 {
@@ -8,10 +9,28 @@ namespace AWorkFlow2.Models.Working
     /// </summary>
     public class WorkingCopy : WorkingModelBase
     {
+        private readonly object lockObj = new object();
+        private string _id = Guid.NewGuid().ToString();
         /// <summary>
         /// working copy id
         /// </summary>
-        public string Id { get; set; }
+        public string Id
+        {
+            get
+            {
+                return _id;
+            }
+            set
+            {
+                _id = value;
+                _Arguments?.SetIds(Id, string.Empty, string.Empty, ActionTypes.WorkData.ToString());
+                _Steps?.SetIds(_id);
+            }
+        }
+        /// <summary>
+        /// workflow category
+        /// </summary>
+        public string WorkFlowCategory { get; set; }
         /// <summary>
         /// workflow code
         /// </summary>
@@ -52,25 +71,99 @@ namespace AWorkFlow2.Models.Working
         /// release time
         /// </summary>
         public DateTime? ReleaseTime { get; set; }
+        private WorkingArguments _Arguments = null;
         /// <summary>
         /// working arguments of the work(input/output)
         /// </summary>
         [IgnoreTracking]
-        public WorkingArguments Arguments { get; set; }
+        public WorkingArguments Arguments
+        {
+            get
+            {
+                return _Arguments;
+            }
+            set
+            {
+                _Arguments = value;
+                _Arguments?.SetIds(Id, string.Empty, string.Empty, ActionTypes.WorkData.ToString());
+            }
+        }
+        private WorkingCopyStepCollection _Steps = null;
         /// <summary>
         /// steps
         /// </summary>
         [IgnoreTracking]
-        public List<WorkingCopyStep> Steps { get; set; }
+        public WorkingCopyStepCollection Steps
+        {
+            get
+            {
+                if (_Steps == null)
+                {
+                    lock (lockObj)
+                    {
+                        _Steps = new WorkingCopyStepCollection();
+                        _Steps?.SetIds(Id);
+                    }
+                }
+                return _Steps;
+            }
+        }
         /// <summary>
         /// flows
         /// </summary>
         [IgnoreTracking]
-        public List<WorkingCopyFlow> Flows { get; set; }
+        public WorkingCopyFlowCollection Flows { get; } = new WorkingCopyFlowCollection();
+        private WorkingCopyGroupCollection _Groups = null;
         /// <summary>
         /// groups of steps
         /// </summary>
         [IgnoreTracking]
-        public List<WorkingCopyGroup> Groups { get; set; }
+        public WorkingCopyGroupCollection Groups
+        {
+            get
+            {
+                if (_Groups == null)
+                {
+                    lock (lockObj)
+                    {
+                        _Groups = new WorkingCopyGroupCollection();
+                        _Groups?.SetIds(Id);
+                    }
+                }
+                return _Groups;
+            }
+        }
+
+        /// <summary>
+        /// accept all changes include sub-items
+        /// </summary>
+        /// <param name="acceptAll"></param>
+        public void AcceptChanges(bool acceptAll)
+        {
+            base.AcceptChanges();
+            if (acceptAll)
+            {
+                // work
+                Arguments?.AcceptChanges();
+                // steps
+                Steps?.Select(x =>
+                {
+                    x.AcceptChanges(acceptAll);
+                    return x;
+                })?.ToList();
+                // flows
+                Flows?.Select(x =>
+                {
+                    x.AcceptChanges(acceptAll);
+                    return x;
+                })?.ToList();
+                // groups
+                Groups?.Select(x =>
+                {
+                    x.AcceptChanges(acceptAll);
+                    return x;
+                })?.ToList();
+            }
+        }
     }
 }

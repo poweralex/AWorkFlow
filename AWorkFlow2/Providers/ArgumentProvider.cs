@@ -141,7 +141,7 @@ namespace AWorkFlow2.Providers
                 {
                     if (key.IsArray)
                     {
-                        JArray arr = JArray.Parse(arg);
+                        JArray arr = JsonHelper.GetArray(arg, currentKey);
                         if (key.Index >= arr.Count)
                         {
                             return string.Empty;
@@ -160,14 +160,14 @@ namespace AWorkFlow2.Providers
                 {
                     if (key.IsArray)
                     {
-                        JArray arr = JArray.Parse(arg);
-                        var token = arr[key.Index].SelectToken(key.SubExpression.Key);
+                        JArray arr = JsonHelper.GetArray(arg, currentKey);
+                        var token = JsonHelper.FindToken(arr[key.Index], key.SubExpression.Key, currentKey);
                         return token?.ToString();
                     }
                     else
                     {
-                        JObject o = JObject.Parse(arg);
-                        var token = o.SelectToken(key.SubExpression.Key);
+                        JObject o = JsonHelper.GetObject(arg, currentKey);
+                        var token = JsonHelper.FindToken(o, key.SubExpression.Key, currentKey);
                         return token?.ToString();
                     }
                 }

@@ -1,5 +1,6 @@
 ﻿using AWorkFlow2.Models;
 using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -8,14 +9,14 @@ using System.Threading.Tasks;
 namespace AWorkFlow2.Providers.ActionExcutor
 {
     /// <summary>
-    /// expand list B in list A into a single level list: [{"B":[{},{}]},{"B":[{}]}] => [{},{},{}]  
+    /// peek fields from a list to a new list: [{"key":"a"},{"key":"b"}] => ["a","b"]
     /// </summary>
-    public class ExpandProcessor : IVariableProcessor
+    public class PeekListProcessor : IVariableProcessor
     {
         /// <summary>
         /// method
         /// </summary>
-        public static readonly string Method = "Expand";
+        public static readonly string Method = "PeekList";
 
         /// <summary>
         /// execute
@@ -25,45 +26,43 @@ namespace AWorkFlow2.Providers.ActionExcutor
         /// <returns></returns>
         public Task<ActionExecuteResult> Execute(string actionSetting, ArgumentProvider argument)
         {
-            var setting = JsonConvert.DeserializeObject<ExpandActionSetting>(actionSetting);
+            var setting = JsonConvert.DeserializeObject<PeekListActionSetting>(actionSetting);
 
             var listJson = argument.Format(setting.Source);
 
             try
             {
                 var list = JsonHelper.GetArray(listJson, setting.Source);
-                var result = new List<Dictionary<string, string>>();
+                var results = new List<JToken>();
                 foreach (var listItem in list)
                 {
                     var tmpArgument = new ArgumentProvider(argument.WorkingArguments.Copy());
                     tmpArgument.ClearKey("sourceItem");
                     tmpArgument.PutPrivate("sourceItem", listItem.ToString());
-                    var target = setting.Target;
-                    if (target.StartsWith("{{") && target.EndsWith("}}"))
+                    if (setting?.Where?.Any() != true || setting?.Where?.Any(x => x.Indicate(tmpArgument) ?? false) == true)
                     {
-                        target = target.Substring(2, target.Length - 4);
-                    }
-
-                    var targetJson = tmpArgument.Format($"{{{{sourceItem.{target}}}}}");
-                    var targetList = JsonHelper.GetArray(targetJson, target);
-                    foreach (var targetItem in targetList)
-                    {
-                        var tmpArgument2 = new ArgumentProvider(tmpArgument.WorkingArguments.Copy());
-                        tmpArgument.ClearKey("targetItem");
-                        tmpArgument2.PutPrivate("targetItem", targetItem.ToString());
-                        if (setting?.Where?.Any() != true || setting?.Where?.Any(x => x.Indicate(tmpArgument) ?? false) == true)
+                        string targetValue = argument.Format(setting.Target);
+                        if (setting.AsString)
                         {
-                            Dictionary<string, string> results = new Dictionary<string, string>();
-                            foreach (var rule in setting.Output)
+                            results.Add(targetValue);
+                        }
+                        else
+                        {
+                            var valueObj = JsonHelper.TryGetObject(targetValue, setting.Target);
+                            if (valueObj == null)
                             {
-                                results.Add(rule.Key, tmpArgument2.Format(rule.Value));
+                                results.Add(targetValue);
                             }
-                            result.Add(results);
+                            else
+                            {
+                                targetValue = JsonConvert.SerializeObject(valueObj);
+                                results.Add(valueObj);
+                            }
                         }
                     }
                 }
 
-                var resultStr = JsonConvert.SerializeObject(result);
+                var resultStr = JsonConvert.SerializeObject(results);
                 return Task.FromResult(new ActionExecuteResult
                 {
                     Success = true,
@@ -88,7 +87,7 @@ namespace AWorkFlow2.Providers.ActionExcutor
     /// <summary>
     /// variable process action setting model
     /// </summary>
-    public class ExpandActionSetting
+    public class PeekListActionSetting
     {
         /// <summary>
         /// source list expression
@@ -99,13 +98,13 @@ namespace AWorkFlow2.Providers.ActionExcutor
         /// </summary>
         public List<ResultIndicator> Where { get; set; }
         /// <summary>
-        /// target list to expand in source list
+        /// mapping rules
         /// </summary>
         public string Target { get; set; }
         /// <summary>
-        /// mapping rules
+        /// peek as string
         /// </summary>
-        public Dictionary<string, string> Output { get; set; }
+        public bool AsString { get; set; }
     }
 
 }
