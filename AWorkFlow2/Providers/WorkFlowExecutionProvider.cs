@@ -1831,7 +1831,9 @@ namespace AWorkFlow2.Providers
             }
             // store manual result on step, wait next run to process this result
             var argProvider = new ArgumentProvider(step.Arguments.Copy());
+            argProvider.PutPublic("now", now.ToString("yyyy/MM/ddTHH:mm:ss.fffZ"));
             argProvider.PutPublic("manualResult", JsonConvert.SerializeObject(args));
+            argProvider.PutPublic("qty", $"{qty}");
 
             var result = new WorkingCopyStepResult
             {
