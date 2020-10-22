@@ -60,6 +60,10 @@ namespace AWorkFlow2.Models.Working
         /// </summary>
         public bool IsCancelled { get; set; }
         /// <summary>
+        /// if this work is stuck
+        /// </summary>
+        public bool IsStuck { get; set; }
+        /// <summary>
         /// is on-hold
         /// </summary>
         public bool OnHold { get; set; }
@@ -133,6 +137,11 @@ namespace AWorkFlow2.Models.Working
                 return _Groups;
             }
         }
+        /// <summary>
+        /// receipt for duplication check
+        /// (receipt + WorkFlowCode)
+        /// </summary>
+        public string DuplicateReceipt { get; set; }
 
         /// <summary>
         /// accept all changes include sub-items

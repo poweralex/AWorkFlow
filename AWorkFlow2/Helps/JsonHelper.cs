@@ -1,9 +1,11 @@
-﻿using Newtonsoft.Json.Linq;
+﻿using AWorkFlow2.Providers;
+using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 
-namespace AWorkFlow2
+namespace AWorkFlow2.Helps
 {
     /// <summary>
     /// json helper
@@ -118,14 +120,33 @@ namespace AWorkFlow2
             {
                 if (ignoreCase)
                 {
-                    var dic = new Dictionary<string, JToken>(obj.ToObject<IDictionary<string, JToken>>());
+                    IDictionary<string, JToken> dic;
+                    if (obj.Type == JTokenType.String)
+                    {
+                        dic = JsonConvert.DeserializeObject<IDictionary<string, JToken>>(obj.ToString());
+                    }
+                    else
+                    {
+                        dic = new Dictionary<string, JToken>(obj.ToObject<IDictionary<string, JToken>>());
+                    }
                     var kvp = dic.FirstOrDefault(x => string.Equals(x.Key, key, StringComparison.CurrentCultureIgnoreCase));
                     if (!string.IsNullOrEmpty(kvp.Key))
                     {
+                        // must use selectToken from obj to provide an token from this obj
                         return obj.SelectToken(kvp.Key);
                     }
                     else
                     {
+                        var keyExpressions = ExpressionProvider.GetExpressions("{{" + key + "}}");
+                        if (keyExpressions?.Any() == true)
+                        {
+                            var keyExpression = keyExpressions?.FirstOrDefault();
+                            if (keyExpression?.SubExpression != null)
+                            {
+                                var token = FindToken(obj, keyExpression?.CurrentKey, objKey, ignoreCase);
+                                return FindToken(token, keyExpression.SubExpression.Key, $"{objKey}.{keyExpression.CurrentKey}", ignoreCase);
+                            }
+                        }
                         return obj.SelectToken(key);
                     }
                 }

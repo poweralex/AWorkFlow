@@ -17,6 +17,12 @@ namespace WorkFlow.Test
 
         static readonly Dictionary<string, int> executionCounts = new Dictionary<string, int>();
 
+        /// <summary>
+        /// Execute
+        /// </summary>
+        /// <param name="actionSetting"></param>
+        /// <param name="argument"></param>
+        /// <returns></returns>
         public async Task<ActionExecuteResult> Execute(string actionSetting, ArgumentProvider argument)
         {
             var setting = JsonConvert.DeserializeObject<UnitTestActionSetting>(actionSetting);
