@@ -1,4 +1,5 @@
-﻿using AWorkFlow2.Models;
+﻿using AWorkFlow2.Helps;
+using AWorkFlow2.Models;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using System.Collections.Generic;
@@ -27,17 +28,21 @@ namespace AWorkFlow2.Providers.ActionExcutor
             var results = new Dictionary<string, JToken>();
             foreach (var kvp in setting.Set)
             {
-                var target = argument.Format(kvp.Key);
+                var target = argument.Format(kvp.Key, true);
                 ExpressionModel expression = new ExpressionModel(string.Empty, target);
                 var currentKey = expression.CurrentKey;
                 if (expression.IsArray)
                 {
                     currentKey = expression.ArrayKey;
                 }
-                var obj = argument.Get(currentKey);
+                var obj = argument.Get(currentKey, true);
+                if (obj != null && !(JsonHelper.IsObject(obj) || JsonHelper.IsArray(obj)))
+                {
+                    obj = null;
+                }
                 if (obj == null)
                 {
-                    string targetValue = argument.Format(kvp.Value);
+                    string targetValue = argument.Format(kvp.Value, true);
                     if (setting.AsString)
                     {
                         results.Add(target, targetValue);
@@ -45,14 +50,20 @@ namespace AWorkFlow2.Providers.ActionExcutor
                     else
                     {
                         var valueObj = JsonHelper.TryGetObject(targetValue, kvp.Value);
-                        if (valueObj == null)
-                        {
-                            results.Add(target, targetValue);
-                        }
-                        else
+                        var valueArr = JsonHelper.TryGetArray(targetValue, kvp.Value);
+                        if (valueObj != null)
                         {
                             targetValue = JsonConvert.SerializeObject(valueObj);
                             results.Add(target, valueObj);
+                        }
+                        else if (valueArr != null)
+                        {
+                            targetValue = JsonConvert.SerializeObject(valueArr);
+                            results.Add(target, valueArr);
+                        }
+                        else
+                        {
+                            results.Add(target, targetValue);
                         }
                     }
                     argument.PutPrivate(target, targetValue);
@@ -91,7 +102,7 @@ namespace AWorkFlow2.Providers.ActionExcutor
                     if (res?.Parent != null)
                     {
                         var prop = (JProperty)res.Parent;
-                        var newValue = argument.Format(kvp.Value);
+                        var newValue = argument.Format(kvp.Value, true);
                         if (setting.AsString)
                         {
                             prop.Value = newValue;
@@ -112,7 +123,7 @@ namespace AWorkFlow2.Providers.ActionExcutor
                         }
                     }
                     argument.PutPrivate(currentKey, JsonConvert.SerializeObject(token));
-                    results.Add(currentKey, argument.Get(expression.CurrentKey));
+                    results.Add(currentKey, token);
                 }
             }
 

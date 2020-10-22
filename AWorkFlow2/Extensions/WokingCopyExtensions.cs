@@ -17,9 +17,9 @@ namespace AWorkFlow2
         /// <param name="workflow"></param>
         /// <param name="input"></param>
         /// <returns></returns>
-        public static WorkingCopy StartNew(this WorkFlowConfig workflow, WorkFlowExecutionProvider provider, Dictionary<string, object> input)
+        public static WorkingCopy StartNew(this WorkFlowConfig workflow, WorkFlowExecutionProvider provider, Dictionary<string, object> input, string duplicateReceipt)
         {
-            var res = provider.StartNew(new List<WorkFlowConfig> { workflow }, input);
+            var res = provider.StartNew(new List<WorkFlowConfig> { workflow }, input, duplicateReceipt);
             return res.Result?.Data?.FirstOrDefault();
         }
         /// <summary>
@@ -28,9 +28,9 @@ namespace AWorkFlow2
         /// <param name="workflows"></param>
         /// <param name="input"></param>
         /// <returns></returns>
-        public static IEnumerable<WorkingCopy> StartNew(this IEnumerable<WorkFlowConfig> workflows, WorkFlowExecutionProvider provider, Dictionary<string, object> input)
+        public static IEnumerable<WorkingCopy> StartNew(this IEnumerable<WorkFlowConfig> workflows, WorkFlowExecutionProvider provider, Dictionary<string, object> input, string duplicateReceipt)
         {
-            var res = provider.StartNew(workflows, input);
+            var res = provider.StartNew(workflows, input, duplicateReceipt);
             return res.Result?.Data;
         }
     }

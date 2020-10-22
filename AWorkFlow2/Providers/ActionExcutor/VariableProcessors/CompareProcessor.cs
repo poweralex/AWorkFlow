@@ -2,6 +2,7 @@
 using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading.Tasks;
 
 namespace AWorkFlow2.Providers.ActionExcutor
@@ -29,10 +30,12 @@ namespace AWorkFlow2.Providers.ActionExcutor
             {
                 var arg1 = argument.Format(setting.Arg1);
                 var arg2 = argument.Format(setting.Arg2);
+                var args = setting.Args?.Select(x => argument.Format(x));
                 if (setting.IgnoreCase)
                 {
-                    arg1 = arg1.ToLower();
-                    arg2 = arg2.ToLower();
+                    arg1 = arg1?.ToLower();
+                    arg2 = arg2?.ToLower();
+                    args = args?.Select(x => x?.ToLower());
                 }
                 bool result = false;
                 switch (setting.Comparer.ToLower())
@@ -46,6 +49,12 @@ namespace AWorkFlow2.Providers.ActionExcutor
                     case "!=":
                         result = arg1 != arg2;
                         break;
+                    case "in":
+                        result = args?.Contains(arg1) ?? false;
+                        break;
+                    case "notin":
+                        result = !(args?.Contains(arg1) ?? false);
+                        break;
                     default:
                         return Task.FromResult(new ActionExecuteResult
                         {
@@ -55,7 +64,7 @@ namespace AWorkFlow2.Providers.ActionExcutor
                 }
                 return Task.FromResult(new ActionExecuteResult
                 {
-                    Success = result,
+                    Success = true,
                     Output = new Dictionary<string, string> { { "result", result.ToString() } },
                     Data = result.ToString()
                 });
@@ -88,6 +97,10 @@ namespace AWorkFlow2.Providers.ActionExcutor
         /// arg2 expression
         /// </summary>
         public string Arg2 { get; set; }
+        /// <summary>
+        /// arg expression(s)
+        /// </summary>
+        public List<string> Args { get; set; }
         /// <summary>
         /// if ignore case when compare
         /// </summary>

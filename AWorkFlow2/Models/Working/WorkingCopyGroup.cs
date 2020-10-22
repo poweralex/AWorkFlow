@@ -37,24 +37,28 @@ namespace AWorkFlow2.Models.Working
         public bool Fulfilled { get; set; }
         /// <summary>
         /// if this group matchs any success
+        /// (check all (not-cancelled) steps)
         /// </summary>
         [IgnoreTracking]
-        public bool AnySuccess => EndSteps?.Where(x => x != null)?.Any(x => x.ActionFinished && x.Success) ?? false;
+        public bool AnySuccess => Steps?.Where(x => x != null && !x.Cancelled)?.Any(x => x.ActionFinished && x.Success) ?? false;
         /// <summary>
         /// if this group matchs any fail
+        /// (check all (not-cancelled) steps)
         /// </summary>
         [IgnoreTracking]
-        public bool AnyFail => EndSteps?.Where(x => x != null)?.Any(x => x.ActionFinished && !x.Success) ?? false;
+        public bool AnyFail => Steps?.Where(x => x != null && !x.Cancelled)?.Any(x => x.ActionFinished && !x.Success) ?? false;
         /// <summary>
         /// if this group matchs all success
+        /// (check all (not-cancelled) steps)
         /// </summary>
         [IgnoreTracking]
-        public bool AllSuccess => Fulfilled && (EndSteps?.Where(x => x != null)?.All(x => x.ActionFinished && x.Success) ?? false);
+        public bool AllSuccess => Fulfilled && (Steps?.Where(x => x != null && !x.Cancelled)?.All(x => x.ActionFinished && x.Success) ?? false);
         /// <summary>
         /// if this group matchs all fail
+        /// (check all (not-cancelled) steps)
         /// </summary>
         [IgnoreTracking]
-        public bool AllFail => Fulfilled && (EndSteps?.Where(x => x != null)?.All(x => x.ActionFinished && !x.Success) ?? false);
+        public bool AllFail => Fulfilled && (Steps?.Where(x => x != null && !x.Cancelled)?.All(x => x.ActionFinished && !x.Success) ?? false);
         /// <summary>
         /// if this group posted next
         /// </summary>
@@ -73,7 +77,27 @@ namespace AWorkFlow2.Models.Working
         /// group end steps
         /// </summary>
         [IgnoreTracking]
+        public IEnumerable<WorkingCopyStep> BeginSteps => Steps?.Where(x => x?.Cancelled != true && string.Equals(x?.Code, StartStepCode, StringComparison.CurrentCultureIgnoreCase));
+        /// <summary>
+        /// group end steps
+        /// </summary>
+        [IgnoreTracking]
         public IEnumerable<WorkingCopyStep> EndSteps => Steps?.Where(x => x?.Cancelled != true && string.Equals(x?.Code, EndStepCode, StringComparison.CurrentCultureIgnoreCase));
+        /// <summary>
+        /// group end steps
+        /// </summary>
+        [IgnoreTracking]
+        public IEnumerable<WorkingCopyStep> SuccessSteps => Steps?.Where(x => x?.Cancelled != true && x?.Finished == true && x?.Success == true);
+        /// <summary>
+        /// group end steps
+        /// </summary>
+        [IgnoreTracking]
+        public IEnumerable<WorkingCopyStep> FailSteps => Steps?.Where(x => x?.Cancelled != true && x?.Finished == true && x?.Success == false);
+        /// <summary>
+        /// groups belong to this group
+        /// </summary>
+        [IgnoreTracking]
+        public WorkingCopyGroupCollection Groups { get; private set; } = new WorkingCopyGroupCollection(false);
 
         /// <summary>
         /// refresh group
@@ -91,8 +115,22 @@ namespace AWorkFlow2.Models.Working
                     )
                 );
 
+            // find all sub-groups(which end step belongs to this group)
+            var currentGroups = Groups.ToList();
+            Groups.AddRange(work.Groups
+                .Where(x => !string.Equals(x.Id, Id))
+                .Where(x => !currentGroups.Contains(x))
+                .Where(x => !(x?.BeginSteps?.Any(x1 => BeginSteps.Contains(x1)) == true
+                    && x?.EndStepCode == EndStepCode)) // except groups which beginstep and endstep are equal to this
+                .Where(x =>
+                    x.EndSteps.Any(y => Steps.Contains(y))
+                )
+            );
+
             Fulfilled = (Steps?.Any(x => !x.Cancelled && string.Equals(x.Code, EndStepCode, System.StringComparison.CurrentCultureIgnoreCase)) ?? false)
-                && (Steps?.All(x => x.ActionFinished && (x.PostedNext || string.Equals(x.Code, EndStepCode, System.StringComparison.CurrentCultureIgnoreCase))) ?? false);
+                && (Steps?.Where(x => !x.Cancelled).All(x => x.ActionFinished && (x.PostedNext || string.Equals(x.Code, EndStepCode, System.StringComparison.CurrentCultureIgnoreCase))) ?? false)
+                && (Groups?.All(x => x.Finished) == true);
+
             return this;
         }
 

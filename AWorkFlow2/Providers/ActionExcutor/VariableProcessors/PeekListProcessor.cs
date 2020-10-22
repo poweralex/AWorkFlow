@@ -1,5 +1,7 @@
-﻿using AWorkFlow2.Models;
+﻿using AWorkFlow2.Helps;
+using AWorkFlow2.Models;
 using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -8,14 +10,14 @@ using System.Threading.Tasks;
 namespace AWorkFlow2.Providers.ActionExcutor
 {
     /// <summary>
-    /// Maps a list to a new list
+    /// peek fields from a list to a new list: [{"key":"a"},{"key":"b"}] => ["a","b"]
     /// </summary>
-    public class MapListProcessor : IVariableProcessor
+    public class PeekListProcessor : IVariableProcessor
     {
         /// <summary>
         /// method
         /// </summary>
-        public static readonly string Method = "MapList";
+        public static readonly string Method = "PeekList";
 
         /// <summary>
         /// execute
@@ -25,27 +27,39 @@ namespace AWorkFlow2.Providers.ActionExcutor
         /// <returns></returns>
         public Task<ActionExecuteResult> Execute(string actionSetting, ArgumentProvider argument)
         {
-            var setting = JsonConvert.DeserializeObject<MapListActionSetting>(actionSetting);
+            var setting = JsonConvert.DeserializeObject<PeekListActionSetting>(actionSetting);
 
             var listJson = argument.Format(setting.Source);
 
             try
             {
                 var list = JsonHelper.GetArray(listJson, setting.Source);
-                var results = new List<Dictionary<string, string>>();
+                var results = new List<JToken>();
                 foreach (var listItem in list)
                 {
                     var tmpArgument = new ArgumentProvider(argument.WorkingArguments.Copy());
-                    tmpArgument.ClearKey("mapItem");
-                    tmpArgument.PutPrivate("mapItem", listItem.ToString());
+                    tmpArgument.ClearKey("sourceItem");
+                    tmpArgument.PutPrivate("sourceItem", listItem.ToString());
                     if (setting?.Where?.Any() != true || setting?.Where?.Any(x => x.Indicate(tmpArgument) ?? false) == true)
                     {
-                        Dictionary<string, string> result = new Dictionary<string, string>();
-                        foreach (var rule in setting.Output)
+                        string targetValue = tmpArgument.Format(setting.Target, true);
+                        if (setting.AsString)
                         {
-                            result.Add(rule.Key, tmpArgument.Format(rule.Value));
+                            results.Add(targetValue);
                         }
-                        results.Add(result);
+                        else
+                        {
+                            var valueObj = JsonHelper.TryGetObject(targetValue, setting.Target);
+                            if (valueObj == null)
+                            {
+                                results.Add(targetValue);
+                            }
+                            else
+                            {
+                                targetValue = JsonConvert.SerializeObject(valueObj);
+                                results.Add(valueObj);
+                            }
+                        }
                     }
                 }
 
@@ -74,7 +88,7 @@ namespace AWorkFlow2.Providers.ActionExcutor
     /// <summary>
     /// variable process action setting model
     /// </summary>
-    public class MapListActionSetting
+    public class PeekListActionSetting
     {
         /// <summary>
         /// source list expression
@@ -87,7 +101,11 @@ namespace AWorkFlow2.Providers.ActionExcutor
         /// <summary>
         /// mapping rules
         /// </summary>
-        public Dictionary<string, string> Output { get; set; }
+        public string Target { get; set; }
+        /// <summary>
+        /// peek as string
+        /// </summary>
+        public bool AsString { get; set; }
     }
 
 }

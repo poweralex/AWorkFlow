@@ -1,4 +1,5 @@
-﻿using AWorkFlow2.Models;
+﻿using AWorkFlow2.Helps;
+using AWorkFlow2.Models;
 using AWorkFlow2.Models.Configs;
 using AWorkFlow2.Models.Working;
 using Newtonsoft.Json;
@@ -38,10 +39,12 @@ namespace AWorkFlow2.Providers
         /// </summary>
         /// <param name="workflows"></param>
         /// <param name="input"></param>
+        /// <param name="duplicateReceipt"></param>
         /// <returns></returns>
         public async Task<OperationResult<IEnumerable<WorkingCopy>>> StartNew(
             IEnumerable<WorkFlowConfig> workflows,
-            Dictionary<string, object> input)
+            Dictionary<string, object> input,
+            string duplicateReceipt = "")
 
         {
             var correlationId = Guid.NewGuid().ToString();
@@ -78,12 +81,19 @@ namespace AWorkFlow2.Providers
                         WorkFlowCode = workflow.Code,
                         WorkFlowVersion = workflow.Version,
                         BeginTime = now,
+                        DuplicateReceipt = duplicateReceipt,
                         UpdatedAt = now,
                         UpdatedBy = User
                     };
                     work.Arguments = argProvider.WorkingArguments.Copy();
+                    work.Arguments.PrivateArguments["workingCopyId"] = work.Id;
                     var results = PostBeginSteps(now, workflow, new ArgumentProvider(work.Arguments), false);
                     work.Steps.AddRange(results.Data);
+
+                    if (string.IsNullOrEmpty(work.DuplicateReceipt))
+                    {
+                        work.DuplicateReceipt = work.Id;
+                    }
 
                     SetNextExecuteTime(work);
                     return work;
@@ -131,7 +141,7 @@ namespace AWorkFlow2.Providers
                         Message = Messages.WorkingCopyNotExisted.Message
                     };
                 }
-                if (work.IsFinished || work.IsCancelled || work.EndTime.HasValue)
+                if (work.IsFinished || work.IsCancelled)
                 {
                     return new OperationResult<WorkingCopy>
                     {
@@ -143,13 +153,13 @@ namespace AWorkFlow2.Providers
                 }
                 // cancel work
                 work.EndTime = now;
-                work.IsFinished = true;
                 work.IsCancelled = true;
+                work.IsFinished = true;
                 work.UpdatedAt = now;
                 work.UpdatedBy = User;
 
                 // cancel all working steps
-                CancelAllRunningSteps(work.Steps, now);
+                CancelAllRunningSteps(work, work.Steps, now);
 
                 return new OperationResult<WorkingCopy>
                 {
@@ -159,10 +169,16 @@ namespace AWorkFlow2.Providers
             }
             catch (Exception ex)
             {
+                if (work?.Arguments?.PrivateArguments != null)
+                {
+                    work.Arguments.PrivateArguments["ExceptionAt"] = $"Cancel@{DateTime.UtcNow}";
+                    work.Arguments.PrivateArguments["Exception"] = ex.ToString();
+                }
                 return new OperationResult<WorkingCopy>
                 {
                     Success = false,
-                    Exception = ex
+                    Exception = ex,
+                    Data = work
                 };
             }
             finally
@@ -197,7 +213,7 @@ namespace AWorkFlow2.Providers
                         Message = Messages.WorkingCopyNotExisted.Message
                     };
                 }
-                if (work.IsFinished || work.IsCancelled || work.EndTime.HasValue)
+                if (work.IsFinished || work.IsCancelled)
                 {
                     return new OperationResult<WorkingCopy>
                     {
@@ -230,10 +246,16 @@ namespace AWorkFlow2.Providers
             }
             catch (Exception ex)
             {
+                if (work?.Arguments?.PrivateArguments != null)
+                {
+                    work.Arguments.PrivateArguments["ExceptionAt"] = $"Pause@{DateTime.UtcNow}";
+                    work.Arguments.PrivateArguments["Exception"] = ex.ToString();
+                }
                 return new OperationResult<WorkingCopy>
                 {
                     Success = false,
-                    Exception = ex
+                    Exception = ex,
+                    Data = work
                 };
             }
             finally
@@ -249,7 +271,7 @@ namespace AWorkFlow2.Providers
         /// <param name="workflow"></param>
         /// <returns></returns>
         public async Task<OperationResult<WorkingCopy>> Resume(
-            WorkingCopy work, WorkFlowConfig workflow)
+        WorkingCopy work, WorkFlowConfig workflow)
         {
             var correlationId = work?.Id;
             if (string.IsNullOrEmpty(correlationId))
@@ -268,7 +290,7 @@ namespace AWorkFlow2.Providers
                         Message = Messages.WorkingCopyNotExisted.Message
                     };
                 }
-                if (work.IsFinished || work.IsCancelled || work.EndTime.HasValue)
+                if (work.IsFinished || work.IsCancelled)
                 {
                     return new OperationResult<WorkingCopy>
                     {
@@ -300,10 +322,16 @@ namespace AWorkFlow2.Providers
             }
             catch (Exception ex)
             {
+                if (work?.Arguments?.PrivateArguments != null)
+                {
+                    work.Arguments.PrivateArguments["ExceptionAt"] = $"Resume@{DateTime.UtcNow}";
+                    work.Arguments.PrivateArguments["Exception"] = ex.ToString();
+                }
                 return new OperationResult<WorkingCopy>
                 {
                     Success = false,
-                    Exception = ex
+                    Exception = ex,
+                    Data = work
                 };
             }
             finally
@@ -313,7 +341,7 @@ namespace AWorkFlow2.Providers
         }
 
         /// <summary>
-        /// restart a finished work
+        /// Restart a closed work
         /// </summary>
         /// <param name="work"></param>
         /// <param name="workflow"></param>
@@ -338,7 +366,7 @@ namespace AWorkFlow2.Providers
                         Message = Messages.WorkingCopyNotExisted.Message
                     };
                 }
-                CancelAllRunningSteps(work.Steps, now);
+                CancelAllRunningSteps(work, work.Steps, now);
                 // init work
                 work.EndTime = null;
                 work.IsCancelled = false;
@@ -350,7 +378,7 @@ namespace AWorkFlow2.Providers
                 work.UpdatedBy = User;
 
                 // post first step
-                var beginSteps = work.Steps.Where(x => x.IsBegin).ToList();
+                var beginSteps = work.Steps.Where(x => x.IsBegin && !x.IsRetry).ToList();
                 work.Steps.AddRange(beginSteps.Select(step =>
                 {
                     var newStep = new WorkingCopyStep
@@ -386,10 +414,16 @@ namespace AWorkFlow2.Providers
             }
             catch (Exception ex)
             {
+                if (work?.Arguments?.PrivateArguments != null)
+                {
+                    work.Arguments.PrivateArguments["ExceptionAt"] = $"Restart@{DateTime.UtcNow}";
+                    work.Arguments.PrivateArguments["Exception"] = ex.ToString();
+                }
                 return new OperationResult<WorkingCopy>
                 {
                     Success = false,
-                    Exception = ex
+                    Exception = ex,
+                    Data = work
                 };
             }
             finally
@@ -461,6 +495,7 @@ namespace AWorkFlow2.Providers
                     if (res?.Success != true)
                     {
                         // stop executing
+
                         break;
                     }
                     // run another round
@@ -473,10 +508,16 @@ namespace AWorkFlow2.Providers
             }
             catch (Exception ex)
             {
+                if (work?.Arguments?.PrivateArguments != null)
+                {
+                    work.Arguments.PrivateArguments["ExceptionAt"] = $"Execute@{DateTime.UtcNow}";
+                    work.Arguments.PrivateArguments["Exception"] = ex.ToString();
+                }
                 return new OperationResult<WorkingCopy>
                 {
                     Success = false,
-                    Exception = ex
+                    Exception = ex,
+                    Data = work
                 };
             }
             finally
@@ -492,7 +533,7 @@ namespace AWorkFlow2.Providers
         /// <param name="workflow"></param>
         /// <param name="forceToExecuteNow">ignore next execute time on steps</param>
         /// <param name="workingStepId">specific step id to run</param>
-        /// <returns></returns>
+        /// <returns>success: can run another round</returns>
         public async Task<OperationResult<WorkingCopy>> ExecuteOneRound(
             WorkingCopy work, WorkFlowConfig workflow, bool forceToExecuteNow, string workingStepId = "")
         {
@@ -542,19 +583,24 @@ namespace AWorkFlow2.Providers
                     }
                 }
                 var res = await ExecuteOneRoundImpl(work, workflow, workingStepId);
-
-                return new OperationResult<WorkingCopy>
+                return new OperationResult<WorkingCopy>(res)
                 {
-                    Success = true,
                     Data = work
                 };
             }
             catch (Exception ex)
             {
+                if (work?.Arguments?.PrivateArguments != null)
+                {
+                    work.Arguments.PrivateArguments["ExceptionAt"] = $"ExecuteOneRound@{DateTime.UtcNow}";
+                    work.Arguments.PrivateArguments["Exception"] = ex.ToString();
+                }
                 return new OperationResult<WorkingCopy>
                 {
                     Success = false,
-                    Exception = ex
+                    Message = ex?.Message,
+                    Exception = ex,
+                    Data = work
                 };
             }
             finally
@@ -587,6 +633,11 @@ namespace AWorkFlow2.Providers
             }
             catch (Exception ex)
             {
+                if (work?.Arguments?.PrivateArguments != null)
+                {
+                    work.Arguments.PrivateArguments["ExceptionAt"] = $"Success@{DateTime.UtcNow}";
+                    work.Arguments.PrivateArguments["Exception"] = ex.ToString();
+                }
                 return new OperationResult<WorkingCopyStepResult>
                 {
                     Success = false,
@@ -619,6 +670,11 @@ namespace AWorkFlow2.Providers
             }
             catch (Exception ex)
             {
+                if (work?.Arguments?.PrivateArguments != null)
+                {
+                    work.Arguments.PrivateArguments["ExceptionAt"] = $"Fail@{DateTime.UtcNow}";
+                    work.Arguments.PrivateArguments["Exception"] = ex.ToString();
+                }
                 return new OperationResult<WorkingCopyStepResult>
                 {
                     Success = false,
@@ -654,7 +710,7 @@ namespace AWorkFlow2.Providers
                         Message = Messages.WorkingCopyNotExisted.Message
                     };
                 }
-                if (work.EndTime != null)
+                if (work.IsFinished)
                 {
                     return new OperationResult<WorkingCopy>
                     {
@@ -663,9 +719,12 @@ namespace AWorkFlow2.Providers
                         Message = Messages.WorkingCopyAlreadyFinished.Message
                     };
                 }
+
+                RefreshGroups(work, workflow);
+
                 var step = work.Steps.FirstOrDefault(x => x.Id == workingStepId);
                 // cancel step
-                CancelOneStep(step, now, true);
+                CancelOneStep(work, step, now, true);
                 // cancel all steps after if activeNext
                 var cancelledSteps = CancelStepsAfter(work, step);
 
@@ -718,10 +777,16 @@ namespace AWorkFlow2.Providers
             }
             catch (Exception ex)
             {
+                if (work?.Arguments?.PrivateArguments != null)
+                {
+                    work.Arguments.PrivateArguments["ExceptionAt"] = $"Retry@{DateTime.UtcNow}";
+                    work.Arguments.PrivateArguments["Exception"] = ex.ToString();
+                }
                 return new OperationResult<WorkingCopy>
                 {
                     Success = false,
-                    Exception = ex
+                    Exception = ex,
+                    Data = work
                 };
             }
             finally
@@ -750,7 +815,7 @@ namespace AWorkFlow2.Providers
                 // if a workflow has a selector, run selector and only the success goes
                 var argumentProvider = new ArgumentProvider(argProvider.WorkingArguments.Copy());
                 var selectorResult = await _actionExecutor.Execute(workflow.Selector, argumentProvider);
-                if (selectorResult?.Success == true)
+                if (selectorResult?.Success == true && !string.Equals(bool.FalseString, selectorResult?.Data, StringComparison.CurrentCultureIgnoreCase))
                 {
                     return workflow;
                 }
@@ -762,14 +827,15 @@ namespace AWorkFlow2.Providers
         /// <summary>
         /// cancel all running steps
         /// </summary>
+        /// <param name="work"></param>
         /// <param name="steps"></param>
         /// <param name="now"></param>
         /// <returns></returns>
-        private IEnumerable<WorkingCopyStep> CancelAllRunningSteps(IEnumerable<WorkingCopyStep> steps, DateTime now)
+        private IEnumerable<WorkingCopyStep> CancelAllRunningSteps(WorkingCopy work, IEnumerable<WorkingCopyStep> steps, DateTime now)
         {
             foreach (var step in steps)
             {
-                CancelOneStep(step, now, false);
+                CancelOneStep(work, step, now, false);
             }
             return steps;
         }
@@ -790,7 +856,10 @@ namespace AWorkFlow2.Providers
             var stepsToCancel = flows.SelectMany(x => x.ToStep?.Steps).ToList();
             return stepsToCancel.SelectMany(x =>
             {
-                CancelOneStep(x, now, false);
+                if (!x.Finished)
+                {
+                    CancelOneStep(work, x, now, false);
+                }
                 return CancelStepsAfter(work, x);
             }).ToList();
 
@@ -798,11 +867,12 @@ namespace AWorkFlow2.Providers
         /// <summary>
         /// cancel one step(if not cancelled or finished)
         /// </summary>
+        /// <param name="work"></param>
         /// <param name="step"></param>
         /// <param name="now"></param>
         /// <param name="force">force to cancel finished step</param>
         /// <returns></returns>
-        private WorkingCopyStep CancelOneStep(WorkingCopyStep step, DateTime now, bool force)
+        private WorkingCopyStep CancelOneStep(WorkingCopy work, WorkingCopyStep step, DateTime now, bool force)
         {
             if (step == null)
             {
@@ -816,8 +886,21 @@ namespace AWorkFlow2.Providers
             step.FinishedTime = now;
             step.Cancelled = true;
             step.Finished = true;
+            step.NextExecuteTime = null;
             step.UpdatedAt = now;
             step.UpdatedBy = User;
+
+            var effectGroups = work?.Groups?.Where(x => x.Steps.Any(groupStep => groupStep?.Id == step.Id));
+            if (effectGroups?.Any() == true)
+            {
+                foreach (var group in effectGroups)
+                {
+                    group.Fulfilled = false;
+                    group.PostedNext = false;
+                    group.UpdatedAt = now;
+                    group.UpdatedBy = User;
+                }
+            }
             return step;
         }
         /// <summary>
@@ -877,26 +960,43 @@ namespace AWorkFlow2.Providers
                 {
                     stepsToGo = work.Steps?.Where(x => !x.Finished && (x.NextExecuteTime == null || x.NextExecuteTime < DateTime.UtcNow))?.ToList();
                 }
+                // if all finished and no end-step exists, but nothing to run, check groups
+                if (stepsToGo?.Any() != true
+                    && work.Steps?.All(x => x.Finished) == true
+                    && work.Steps?.Any(x => x.IsEnd) != true)
+                {
+                    // reorganize group after steps executed
+                    RefreshGroups(work, workflow);
+                    if (work.Groups?.Any(x => !x.Finished) == true)
+                    {
+                        stepsToGo = work.Groups.FirstOrDefault(x => !x.Finished).Steps.Take(1);
+                    }
+                }
                 if (stepsToGo?.Any() != true)
                 {
                     return new OperationResult
                     {
-                        Success = false,
-                        Code = Messages.GotNothingToGo.Code,
-                        Message = Messages.GotNothingToGo.Code
+                        Success = false
                     };
+                }
+                if (stepsToGo?.Count(x => !x.WaitManual) > 5)
+                {
+                    stepsToGo = stepsToGo.Where(x => !x.WaitManual).Take(5);
                 }
 
                 var newPosted = await ExecuteSteps(work, stepsToGo, workflow);
 
                 return new OperationResult
                 {
-                    Success = !work.IsFinished
+                    Success = newPosted
                 };
             }
             catch (Exception ex)
             {
-                work.Arguments.PrivateArguments["Exception"] = ex.Message;
+                if (work?.Arguments?.PrivateArguments != null)
+                {
+                    work.Arguments.PrivateArguments["Exception"] = ex.Message;
+                }
                 return new OperationResult
                 {
                     Success = false,
@@ -921,9 +1021,6 @@ namespace AWorkFlow2.Providers
             // execute all step
             var results = await Task.WhenAll(stepsToGo.Select(x => ExecuteOneStep(x, workflow)).ToList());
 
-            // refresh group after steps executed
-            RefreshGroups(work, workflow);
-
             // post next for all steps not posted
             bool newPosted = false;
             // find executionResults requires post next
@@ -938,9 +1035,13 @@ namespace AWorkFlow2.Providers
                 ?.Where(x => x?.Cancelled != true && x.ActionFinished && !x.PostedNext)
                 ?.ToList();
             newPosted = await PostNextForSteps(work, stepsRequiresNext, workflow) || newPosted;
+
+            // reorganize group after steps executed
+            RefreshGroups(work, workflow);
+
             // find groups requires post next
             var groupsRequiresNext = work?.Groups
-                ?.Where(x => x.Fulfilled && !x.PostedNext)
+                ?.Where(x => !x.PostedNext)
                 ?.ToList();
             newPosted = await PostNextForGroups(work, groupsRequiresNext, workflow) || newPosted;
 
@@ -962,7 +1063,6 @@ namespace AWorkFlow2.Providers
         /// </summary>
         /// <param name="step"></param>
         /// <param name="workflow"></param>
-        /// <param name="now"></param>
         /// <returns></returns>
         private async Task<OperationResult<WorkingCopyStep>> ExecuteOneStep(WorkingCopyStep step, WorkFlowConfig workflow)
         {
@@ -991,7 +1091,7 @@ namespace AWorkFlow2.Providers
 
             var workflowStep = workflow.Steps?.FirstOrDefault(x => x.Code == step.Code);
             ArgumentProvider argProviderStep = new ArgumentProvider(step.Arguments);
-            argProviderStep.PutPrivate("now", DateTime.UtcNow.ToString("yyyy/MM/ddTHH:mm:ss.fffZ"));
+            argProviderStep.PutPrivate("now", DateTime.UtcNow.ToString("yyyy-MM-ddTHH:mm:ss.fffZ"));
 
             // process pre-action
             if (!step.PreActionFinished)
@@ -1106,14 +1206,14 @@ namespace AWorkFlow2.Providers
                         step.Success = true;
                     }
                 }
-                if (step.ActionFinished)
+            }
+            if (step.ActionFinished)
+            {
+                if (workflowStep?.Output?.Any() == true)
                 {
-                    if (workflowStep?.Output?.Any() == true)
-                    {
-                        var sourceArguments = step.LastActionResults != null ? step.LastActionResults.Arguments : step.Arguments;
-                        // process output for step
-                        ProcessOutput(workflowStep.Output, sourceArguments, step.Arguments);
-                    }
+                    var sourceArguments = step.LastActionResults != null ? step.LastActionResults.Arguments : step.Arguments;
+                    // process output for step
+                    ProcessOutput(workflowStep.Output, sourceArguments, step.Arguments);
                 }
             }
             step.NextExecuteTime = DateTime.UtcNow.Add(workflowStep?.ActionInterval ?? TimeSpan.FromMinutes(1));
@@ -1258,7 +1358,7 @@ namespace AWorkFlow2.Providers
         {
             var partialFlows = workflow.Flows.Where(x => x.CurrentStepCode == step.Code
             && (x.NextOn == FlowNextType.OnPartialSuccess
-            || x.NextOn == FlowNextType.OnPartialFail));
+            || x.NextOn == FlowNextType.OnPartialFail)).ToList();
             if (partialFlows?.Any() != true)
             {
                 return new OperationResult<IEnumerable<WorkingCopyStep>>
@@ -1297,7 +1397,7 @@ namespace AWorkFlow2.Providers
                     var argProvider = new ArgumentProvider(result.Arguments);
                     // if a workflow flow has a selector, run selector and only the success goes
                     var selectorResult = _actionExecutor.Execute(flow.Selector, argProvider).Result;
-                    if (selectorResult?.Success != true)
+                    if (selectorResult?.Success != true || string.Equals(bool.FalseString, selectorResult?.Data, StringComparison.CurrentCultureIgnoreCase))
                     {
                         continue;
                     }
@@ -1324,7 +1424,7 @@ namespace AWorkFlow2.Providers
         {
             var stepFlows = workflow.Flows.Where(x => x.CurrentStepCode == step.Code
             && x.NextOn != FlowNextType.OnPartialSuccess
-            && x.NextOn != FlowNextType.OnPartialFail);
+            && x.NextOn != FlowNextType.OnPartialFail).ToList();
             if (stepFlows?.Any() != true)
             {
                 return new OperationResult<IEnumerable<WorkingCopyStep>>
@@ -1364,7 +1464,7 @@ namespace AWorkFlow2.Providers
                 {
                     // if a workflow flow has a selector, run selector and only the success goes
                     var selectorResult = _actionExecutor.Execute(flow.Selector, argumentProvider).Result;
-                    if (selectorResult?.Success != true)
+                    if (selectorResult?.Success != true || string.Equals(bool.FalseString, selectorResult?.Data, StringComparison.CurrentCultureIgnoreCase))
                     {
                         continue;
                     }
@@ -1438,8 +1538,7 @@ namespace AWorkFlow2.Providers
                     {
                         matchGroup = true;
                         argumentProvider = new ArgumentProvider(
-                            group.EndSteps.FirstOrDefault(x => x.ActionFinished && x.Success)
-                            .Arguments.Copy()
+                            WorkingArguments.Merge(group.SuccessSteps.Select(x => x.Arguments), false)
                             .ExpandOutputs());
                     }
                     break;
@@ -1448,8 +1547,7 @@ namespace AWorkFlow2.Providers
                     {
                         matchGroup = true;
                         argumentProvider = new ArgumentProvider(
-                            group.EndSteps.FirstOrDefault(x => x.ActionFinished && !x.Success)
-                            .Arguments.Copy()
+                            WorkingArguments.Merge(group.FailSteps.Select(x => x.Arguments), false)
                             .ExpandOutputs());
                     }
                     break;
@@ -1466,7 +1564,7 @@ namespace AWorkFlow2.Providers
             {
                 // if a workflow flow has a selector, run selector and only the success goes
                 var selectorResult = _actionExecutor.Execute(flow.Selector, argumentProvider).Result;
-                if (selectorResult?.Success != true)
+                if (selectorResult?.Success != true || string.Equals(bool.FalseString, selectorResult?.Data, StringComparison.CurrentCultureIgnoreCase))
                 {
                     return new OperationResult<IEnumerable<WorkingCopyStep>>
                     {
@@ -1509,7 +1607,7 @@ namespace AWorkFlow2.Providers
                     ByQty = stepConfig.ByQty,
                     MatchQty = argProvider.Format(stepConfig.MatchQty).ToNullableInt(),
                     ActiveTime = now,
-                    Arguments = argument.Copy().ExpandOutputs(),
+                    Arguments = argument.Copy().ExpandOutputs().FilterKeys(stepConfig.Input),
                     UpdatedAt = now,
                     UpdatedBy = User
                 });
@@ -1543,7 +1641,7 @@ namespace AWorkFlow2.Providers
                         ByQty = stepConfig.ByQty,
                         MatchQty = loopArgProvider.Format(stepConfig.MatchQty).ToNullableInt(),
                         ActiveTime = now,
-                        Arguments = loopArgProvider.WorkingArguments,
+                        Arguments = loopArgProvider.WorkingArguments.FilterKeys(stepConfig.Input),
                         UpdatedAt = now,
                         UpdatedBy = User
                     });
@@ -1594,9 +1692,9 @@ namespace AWorkFlow2.Providers
         /// <returns></returns>
         private async Task<bool> PostNextForExecutions(WorkingCopy work, IEnumerable<(WorkingCopyStep step, WorkingCopyStepResult result)> executionsRequiresNext, WorkFlowConfig workflow)
         {
+            DateTime now = DateTime.UtcNow;
             if (executionsRequiresNext?.Any() == true)
             {
-                DateTime now = DateTime.UtcNow;
                 ConcurrentBag<WorkingCopyStep> nextSteps = new ConcurrentBag<WorkingCopyStep>();
                 ConcurrentBag<WorkingCopyFlow> nextFlows = new ConcurrentBag<WorkingCopyFlow>();
                 var results = await Task.WhenAll(executionsRequiresNext
@@ -1643,15 +1741,15 @@ namespace AWorkFlow2.Providers
                 var toAddNextFlows = nextFlows.Where(x => !failedStepResultIds.Contains(x.ExecutionResult.Id));
                 var toAddNextSteps = toAddNextFlows.SelectMany(x => x.ToStep.Steps).Where(x => nextSteps.Contains(x));
                 // add next steps and flows and groups to work
-                if (nextSteps?.Any() == true)
+                if (toAddNextSteps?.Any() == true)
                 {
                     work.Steps.AddRange(toAddNextSteps);
                 }
-                if (nextFlows?.Any() == true)
+                if (toAddNextFlows?.Any() == true)
                 {
                     work.Flows.AddRange(toAddNextFlows);
                 }
-                return true;
+                return toAddNextSteps?.Any() == true;
             }
             return false;
         }
@@ -1664,9 +1762,9 @@ namespace AWorkFlow2.Providers
         /// <returns></returns>
         private async Task<bool> PostNextForSteps(WorkingCopy work, IEnumerable<WorkingCopyStep> stepRequiresNext, WorkFlowConfig workflow)
         {
+            DateTime now = DateTime.UtcNow;
             if (stepRequiresNext?.Any() == true)
             {
-                DateTime now = DateTime.UtcNow;
                 ConcurrentBag<WorkingCopyStep> nextSteps = new ConcurrentBag<WorkingCopyStep>();
                 ConcurrentBag<WorkingCopyFlow> nextFlows = new ConcurrentBag<WorkingCopyFlow>();
                 var results = await Task.WhenAll(stepRequiresNext
@@ -1681,6 +1779,7 @@ namespace AWorkFlow2.Providers
                                 x.PostedNext = true;
                                 x.Finished = true;
                                 x.FinishedTime = DateTime.UtcNow;
+                                x.NextExecuteTime = null;
                                 if (postRes?.Data?.Any() == true)
                                 {
                                     foreach (var step in postRes.Data)
@@ -1703,6 +1802,7 @@ namespace AWorkFlow2.Providers
                             x.PostedNext = false;
                             x.Finished = false;
                             x.FinishedTime = null;
+                            x.NextExecuteTime = now.AddMinutes(1);
                             if (x?.Arguments?.PrivateArguments != null)
                             {
                                 x.Arguments.PrivateArguments["Exception"] = ex.Message;
@@ -1716,15 +1816,15 @@ namespace AWorkFlow2.Providers
                 var toAddNextFlows = nextFlows.Where(x => !x.FromStep.Steps.Any(step => failedStepIds.Contains(step.Id)));
                 var toAddNextSteps = toAddNextFlows.SelectMany(x => x.ToStep.Steps).Where(x => nextSteps.Contains(x));
                 // add next steps and flows and groups to work
-                if (nextSteps?.Any() == true)
+                if (toAddNextSteps?.Any() == true)
                 {
                     work.Steps.AddRange(toAddNextSteps);
                 }
-                if (nextFlows?.Any() == true)
+                if (toAddNextFlows?.Any() == true)
                 {
                     work.Flows.AddRange(toAddNextFlows);
                 }
-                return true;
+                return toAddNextSteps?.Any() == true;
             }
             return false;
         }
@@ -1737,9 +1837,9 @@ namespace AWorkFlow2.Providers
         /// <returns></returns>
         private async Task<bool> PostNextForGroups(WorkingCopy work, IEnumerable<WorkingCopyGroup> groupsRequiresNext, WorkFlowConfig workflow)
         {
+            DateTime now = DateTime.UtcNow;
             if (groupsRequiresNext?.Any() == true)
             {
-                DateTime now = DateTime.UtcNow;
                 ConcurrentBag<WorkingCopyStep> nextSteps = new ConcurrentBag<WorkingCopyStep>();
                 ConcurrentBag<WorkingCopyFlow> nextFlows = new ConcurrentBag<WorkingCopyFlow>();
                 var results = await Task.WhenAll(groupsRequiresNext
@@ -1759,9 +1859,14 @@ namespace AWorkFlow2.Providers
                                     {
                                         nextSteps.Add(step);
                                     }
+                                    var fromSteps = x.EndSteps;
+                                    if (x.EndSteps?.Any() != true)
+                                    {
+                                        fromSteps = x.BeginSteps;
+                                    }
                                     nextFlows.Add(new WorkingCopyFlow
                                     {
-                                        FromStep = new WorkingCopyFlowSeed(x.EndSteps),
+                                        FromStep = new WorkingCopyFlowSeed(fromSteps),
                                         ToStep = new WorkingCopyFlowSeed(postRes?.Data),
                                         UpdatedAt = now,
                                         UpdatedBy = User
@@ -1781,20 +1886,19 @@ namespace AWorkFlow2.Providers
                             return new OperationResult<WorkingCopyGroup> { Success = false, Exception = ex, Data = x };
                         }
                     }));
-
                 var failedStepIds = results?.Where(x => x?.Success != true)?.SelectMany(x => x?.Data?.Steps.Select(step => step.Id));
                 var toAddNextFlows = nextFlows.Where(x => !x.FromStep.Steps.Any(step => failedStepIds.Contains(step.Id)));
                 var toAddNextSteps = toAddNextFlows.SelectMany(x => x.ToStep.Steps).Where(x => nextSteps.Contains(x));
                 // add next steps and flows and groups to work
-                if (nextSteps?.Any() == true)
+                if (toAddNextSteps?.Any() == true)
                 {
                     work.Steps.AddRange(toAddNextSteps);
                 }
-                if (nextFlows?.Any() == true)
+                if (toAddNextFlows?.Any() == true)
                 {
                     work.Flows.AddRange(toAddNextFlows);
                 }
-                return true;
+                return toAddNextSteps?.Any() == true;
             }
             return false;
         }
@@ -1831,7 +1935,6 @@ namespace AWorkFlow2.Providers
             }
             // store manual result on step, wait next run to process this result
             var argProvider = new ArgumentProvider(step.Arguments.Copy());
-            argProvider.PutPublic("now", now.ToString("yyyy/MM/ddTHH:mm:ss.fffZ"));
             argProvider.PutPublic("manualResult", JsonConvert.SerializeObject(args));
             argProvider.PutPublic("qty", $"{qty}");
 
@@ -1873,7 +1976,7 @@ namespace AWorkFlow2.Providers
                     .Select(x => x.Id);
                 foreach (var startStepId in startStepIds)
                 {
-                    var existedGroup = work?.Groups?.FirstOrDefault(x => x.FLowId == flow.Id && x.Steps.Any(step => step.Id == startStepId));
+                    var existedGroup = work?.Groups?.FirstOrDefault(x => x.FLowId == flow.Id && x.Steps.Any(step => step?.Id == startStepId));
                     if (existedGroup == null)
                     {
                         // build new group
@@ -1889,9 +1992,9 @@ namespace AWorkFlow2.Providers
                     }
                 }
             }
-
             return work;
         }
+
         /// <summary>
         /// set next execution time for work
         /// </summary>
@@ -1913,6 +2016,9 @@ namespace AWorkFlow2.Providers
             {
                 work.NextExecuteTime = DateTime.UtcNow.AddMinutes(1);
             }
+
+            work.IsStuck = work.Steps?.All(x => x.PostedNext) == true
+                && !work.IsFinished;
 
             return work;
         }

@@ -1,22 +1,22 @@
-﻿using AWorkFlow2.Models;
+﻿using AWorkFlow2.Helps;
+using AWorkFlow2.Models;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Threading.Tasks;
 
 namespace AWorkFlow2.Providers.ActionExcutor
 {
     /// <summary>
-    /// peek fields from a list to a new list: [{"key":"a"},{"key":"b"}] => ["a","b"]
+    /// groups a list to a new list of [{"groupKey":"","groupItems":[]}]
     /// </summary>
-    public class PeekListProcessor : IVariableProcessor
+    public class GroupListProcessor : IVariableProcessor
     {
         /// <summary>
         /// method
         /// </summary>
-        public static readonly string Method = "PeekList";
+        public static readonly string Method = "GroupList";
 
         /// <summary>
         /// execute
@@ -26,43 +26,46 @@ namespace AWorkFlow2.Providers.ActionExcutor
         /// <returns></returns>
         public Task<ActionExecuteResult> Execute(string actionSetting, ArgumentProvider argument)
         {
-            var setting = JsonConvert.DeserializeObject<PeekListActionSetting>(actionSetting);
+            var setting = JsonConvert.DeserializeObject<GroupListActionSetting>(actionSetting);
 
             var listJson = argument.Format(setting.Source);
 
             try
             {
                 var list = JsonHelper.GetArray(listJson, setting.Source);
-                var results = new List<JToken>();
+                var result = new List<Dictionary<string, string>>();
+                Dictionary<string, JArray> groupData = new Dictionary<string, JArray>();
                 foreach (var listItem in list)
                 {
                     var tmpArgument = new ArgumentProvider(argument.WorkingArguments.Copy());
-                    tmpArgument.ClearKey("sourceItem");
-                    tmpArgument.PutPrivate("sourceItem", listItem.ToString());
-                    if (setting?.Where?.Any() != true || setting?.Where?.Any(x => x.Indicate(tmpArgument) ?? false) == true)
+                    tmpArgument.ClearKey("loopItem");
+                    tmpArgument.PutPrivate("loopItem", listItem.ToString());
+                    var key = tmpArgument.Format(setting.Key, true);
+                    if (groupData.ContainsKey(key))
                     {
-                        string targetValue = argument.Format(setting.Target);
-                        if (setting.AsString)
-                        {
-                            results.Add(targetValue);
-                        }
-                        else
-                        {
-                            var valueObj = JsonHelper.TryGetObject(targetValue, setting.Target);
-                            if (valueObj == null)
-                            {
-                                results.Add(targetValue);
-                            }
-                            else
-                            {
-                                targetValue = JsonConvert.SerializeObject(valueObj);
-                                results.Add(valueObj);
-                            }
-                        }
+                        groupData[key].Add(listItem);
+                    }
+                    else
+                    {
+                        groupData[key] = new JArray { listItem };
                     }
                 }
+                foreach (var kvp in groupData)
+                {
+                    var tmpArgument = new ArgumentProvider(argument.WorkingArguments.Copy());
+                    tmpArgument.ClearKey("groupKey");
+                    tmpArgument.ClearKey("groupItems");
+                    tmpArgument.PutPrivate("groupKey", kvp.Key.ToString());
+                    tmpArgument.PutPrivate("groupItems", kvp.Value.ToString());
+                    Dictionary<string, string> results = new Dictionary<string, string>();
+                    foreach (var rule in setting.Output)
+                    {
+                        results.Add(rule.Key, tmpArgument.Format(rule.Value, true));
+                    }
+                    result.Add(results);
+                }
 
-                var resultStr = JsonConvert.SerializeObject(results);
+                var resultStr = JsonConvert.SerializeObject(result);
                 return Task.FromResult(new ActionExecuteResult
                 {
                     Success = true,
@@ -87,24 +90,20 @@ namespace AWorkFlow2.Providers.ActionExcutor
     /// <summary>
     /// variable process action setting model
     /// </summary>
-    public class PeekListActionSetting
+    public class GroupListActionSetting
     {
         /// <summary>
         /// source list expression
         /// </summary>
         public string Source { get; set; }
         /// <summary>
-        /// filter condition(s)
+        /// key expression
         /// </summary>
-        public List<ResultIndicator> Where { get; set; }
+        public string Key { get; set; }
         /// <summary>
         /// mapping rules
         /// </summary>
-        public string Target { get; set; }
-        /// <summary>
-        /// peek as string
-        /// </summary>
-        public bool AsString { get; set; }
+        public Dictionary<string, string> Output { get; set; }
     }
 
 }

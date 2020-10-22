@@ -14,7 +14,6 @@ namespace WorkFlow.Test
             Assert.IsNotNull(result);
             Assert.IsTrue(result.Success);
         }
-
         public static void ValidateOperationResultWithData<T>(OperationResult<T> result)
         {
             ValidateOperationResult(result);
@@ -68,7 +67,6 @@ namespace WorkFlow.Test
                 CompareObject(o1, o2);
             }
         }
-
         public static void CompareTimeApproximate(DateTime? dt1, DateTime? dt2)
         {
             if (dt1 == null && dt2 == null)

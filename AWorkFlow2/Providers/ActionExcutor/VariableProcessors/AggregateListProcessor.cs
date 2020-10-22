@@ -1,4 +1,5 @@
-﻿using AWorkFlow2.Models;
+﻿using AWorkFlow2.Helps;
+using AWorkFlow2.Models;
 using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
@@ -43,8 +44,7 @@ namespace AWorkFlow2.Providers.ActionExcutor
                         tmpArgument.PutPrivate("sourceItem", listItem.ToString());
                         if (setting?.Where?.Any() != true || setting?.Where?.Any(x => x.Indicate(tmpArgument) ?? false) == true)
                         {
-
-                            var targetJson = tmpArgument.Format(setting.Target);
+                            var targetJson = tmpArgument.Format(setting.Target, true);
                             sum += targetJson.ToNullableInt() ?? 0;
                         }
                     }

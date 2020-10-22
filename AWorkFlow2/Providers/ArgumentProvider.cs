@@ -1,4 +1,5 @@
-﻿using AWorkFlow2.Models.Working;
+﻿using AWorkFlow2.Helps;
+using AWorkFlow2.Models.Working;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 
@@ -27,8 +28,9 @@ namespace AWorkFlow2.Providers
         /// format expression with arguments
         /// </summary>
         /// <param name="input"></param>
+        /// <param name="privateFirst"></param>
         /// <returns></returns>
-        public string Format(string input)
+        public string Format(string input, bool privateFirst = false)
         {
             if (string.IsNullOrEmpty(input))
             {
@@ -38,7 +40,7 @@ namespace AWorkFlow2.Providers
             string res = input;
             foreach (var key in keyExpressions)
             {
-                res = res.Replace(key.Expression, GetValue(key));
+                res = res.Replace(key.Expression, GetValue(key, privateFirst));
             }
             return res;
         }
@@ -67,17 +69,33 @@ namespace AWorkFlow2.Providers
         /// get argument
         /// </summary>
         /// <param name="key"></param>
+        /// <param name="privateFirst"></param>
         /// <returns></returns>
-        public string Get(string key)
+        public string Get(string key, bool privateFirst)
         {
-            var res = GetPublic(key);
-            if (res == null)
+            if (privateFirst)
             {
-                return GetPrivate(key);
+                var res = GetPrivate(key);
+                if (res == null)
+                {
+                    return GetPublic(key);
+                }
+                else
+                {
+                    return res;
+                }
             }
             else
             {
-                return res;
+                var res = GetPublic(key);
+                if (res == null)
+                {
+                    return GetPrivate(key);
+                }
+                else
+                {
+                    return res;
+                }
             }
         }
 
@@ -115,11 +133,11 @@ namespace AWorkFlow2.Providers
             }
         }
 
-        private string GetValue(ExpressionModel key)
+        private string GetValue(ExpressionModel key, bool privateFirst)
         {
             try
             {
-                var res = Get(key.Key);
+                var res = Get(key.Key, privateFirst);
                 if (res != null)
                 {
                     return res;
@@ -130,10 +148,10 @@ namespace AWorkFlow2.Providers
                 {
                     currentKey = key.ArrayKey;
                 }
-                res = Get(currentKey);
+                res = Get(currentKey, privateFirst);
                 if (res == null)
                 {
-                    return key.Key;
+                    return string.Empty;
                 }
 
                 var arg = res;
@@ -148,7 +166,7 @@ namespace AWorkFlow2.Providers
                         }
                         else
                         {
-                            return JsonConvert.SerializeObject(arr[key.Index]);
+                            return arr[key.Index].ToString();
                         }
                     }
                     else

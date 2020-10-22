@@ -69,7 +69,7 @@ namespace AWorkFlow2.Providers.ActionExcutor
                     }
                     return Task.FromResult(new ActionExecuteResult
                     {
-                        Success = result,
+                        Success = true,
                         Output = new Dictionary<string, string> { { "result", result.ToString() } },
                         Data = result.ToString()
                     });

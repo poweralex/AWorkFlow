@@ -1,21 +1,22 @@
-﻿using AWorkFlow2.Models;
+﻿using AWorkFlow2.Helps;
+using AWorkFlow2.Models;
 using Newtonsoft.Json;
-using Newtonsoft.Json.Linq;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading.Tasks;
 
 namespace AWorkFlow2.Providers.ActionExcutor
 {
     /// <summary>
-    /// groups a list to a new list of [{"groupKey":"","groupItems":[]}]
+    /// Maps a list to a new list
     /// </summary>
-    public class GroupListProcessor : IVariableProcessor
+    public class MapListProcessor : IVariableProcessor
     {
         /// <summary>
         /// method
         /// </summary>
-        public static readonly string Method = "GroupList";
+        public static readonly string Method = "MapList";
 
         /// <summary>
         /// execute
@@ -25,46 +26,31 @@ namespace AWorkFlow2.Providers.ActionExcutor
         /// <returns></returns>
         public Task<ActionExecuteResult> Execute(string actionSetting, ArgumentProvider argument)
         {
-            var setting = JsonConvert.DeserializeObject<GroupListActionSetting>(actionSetting);
+            var setting = JsonConvert.DeserializeObject<MapListActionSetting>(actionSetting);
 
             var listJson = argument.Format(setting.Source);
 
             try
             {
                 var list = JsonHelper.GetArray(listJson, setting.Source);
-                var result = new List<Dictionary<string, string>>();
-                Dictionary<string, JArray> groupData = new Dictionary<string, JArray>();
+                var results = new List<Dictionary<string, string>>();
                 foreach (var listItem in list)
                 {
                     var tmpArgument = new ArgumentProvider(argument.WorkingArguments.Copy());
-                    tmpArgument.ClearKey("loopItem");
-                    tmpArgument.PutPrivate("loopItem", listItem.ToString());
-                    var key = tmpArgument.Format(setting.Key);
-                    if (groupData.ContainsKey(key))
+                    tmpArgument.ClearKey("mapItem");
+                    tmpArgument.PutPrivate("mapItem", listItem.ToString());
+                    if (setting?.Where?.Any() != true || setting?.Where?.Any(x => x.Indicate(tmpArgument) ?? false) == true)
                     {
-                        groupData[key].Add(listItem);
+                        Dictionary<string, string> result = new Dictionary<string, string>();
+                        foreach (var rule in setting.Output)
+                        {
+                            result.Add(rule.Key, tmpArgument.Format(rule.Value, true));
+                        }
+                        results.Add(result);
                     }
-                    else
-                    {
-                        groupData[key] = new JArray { listItem };
-                    }
-                }
-                foreach (var kvp in groupData)
-                {
-                    var tmpArgument = new ArgumentProvider(argument.WorkingArguments.Copy());
-                    tmpArgument.ClearKey("groupKey");
-                    tmpArgument.ClearKey("groupItems");
-                    tmpArgument.PutPrivate("groupKey", kvp.Key.ToString());
-                    tmpArgument.PutPrivate("groupItems", kvp.Value.ToString());
-                    Dictionary<string, string> results = new Dictionary<string, string>();
-                    foreach (var rule in setting.Output)
-                    {
-                        results.Add(rule.Key, tmpArgument.Format(rule.Value));
-                    }
-                    result.Add(results);
                 }
 
-                var resultStr = JsonConvert.SerializeObject(result);
+                var resultStr = JsonConvert.SerializeObject(results);
                 return Task.FromResult(new ActionExecuteResult
                 {
                     Success = true,
@@ -89,16 +75,16 @@ namespace AWorkFlow2.Providers.ActionExcutor
     /// <summary>
     /// variable process action setting model
     /// </summary>
-    public class GroupListActionSetting
+    public class MapListActionSetting
     {
         /// <summary>
         /// source list expression
         /// </summary>
         public string Source { get; set; }
         /// <summary>
-        /// key expression
+        /// filter condition(s)
         /// </summary>
-        public string Key { get; set; }
+        public List<ResultIndicator> Where { get; set; }
         /// <summary>
         /// mapping rules
         /// </summary>

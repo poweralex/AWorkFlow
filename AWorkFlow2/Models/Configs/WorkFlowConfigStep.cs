@@ -68,6 +68,10 @@ namespace AWorkFlow2.Models.Configs
         /// </summary>
         public int RetryLimit { get; set; }
         /// <summary>
+        /// input variable names
+        /// </summary>
+        public List<string> Input { get; set; }
+        /// <summary>
         /// step output(s)
         /// </summary>
         public Dictionary<string, string> Output { get; set; }

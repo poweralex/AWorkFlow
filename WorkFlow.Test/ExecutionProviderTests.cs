@@ -31,6 +31,9 @@ namespace WorkFlow.Test
             processorContainerBuilder.RegisterType<ExpandProcessor>().Named<IVariableProcessor>(ExpandProcessor.Method.ToUpper());
             processorContainerBuilder.RegisterType<CompareNumberProcessor>().Named<IVariableProcessor>(CompareNumberProcessor.Method.ToUpper());
             processorContainerBuilder.RegisterType<CompareProcessor>().Named<IVariableProcessor>(CompareProcessor.Method.ToUpper());
+            processorContainerBuilder.RegisterType<GroupListProcessor>().Named<IVariableProcessor>(GroupListProcessor.Method.ToUpper());
+            processorContainerBuilder.RegisterType<AggregateListProcessor>().Named<IVariableProcessor>(AggregateListProcessor.Method.ToUpper());
+            processorContainerBuilder.RegisterType<PeekListProcessor>().Named<IVariableProcessor>(PeekListProcessor.Method.ToUpper());
             processorContainerBuilder.RegisterType<UnitTestActionProcessor>().Named<IVariableProcessor>(UnitTestActionProcessor.Method.ToUpper());
             var processorContainer = processorContainerBuilder.Build();
             actionContainerBuilder.RegisterInstance(processorContainer);
@@ -137,7 +140,7 @@ namespace WorkFlow.Test
         [Test]
         public void TestCreateNewWork_SelectOne()
         {
-            var workRes = _executionProvider.StartNew(_workflows, _input).Result;
+            var workRes = _executionProvider.StartNew(_workflows, _input, string.Empty).Result;
             Common.ValidateOperationResultWithData(workRes);
             var works = workRes.Data;
             /// 1. select one workflow and create new work
@@ -1942,6 +1945,132 @@ namespace WorkFlow.Test
             Assert.AreEqual(1, stepProcessItem.PreActionExecutedCount);
 
             Assert.IsTrue(work.Steps.Any(x => x.Code == "onProcessItemFailed"));
+        }
+
+        [Test]
+        public void TestAfterGroupOutput()
+        {
+            #region data
+            var workflow = new WorkFlowConfig
+            {
+                Steps = new List<WorkFlowConfigStep>
+                {
+                    new WorkFlowConfigStep
+                    {
+                        Code = "start",
+                        IsBegin = true
+                    },
+                    new WorkFlowConfigStep
+                    {
+                        Code = "item_process",
+                        LoopBy = "{{input.items}}"
+                    },
+                    new WorkFlowConfigStep
+                    {
+                        Code = "after_group",
+                        Output = new Dictionary<string, string>
+                        {
+                            { "input","{{input[0]}}"}
+                        },
+                        Manual = true,
+                        PreActions = new List<WorkFlowActionSetting>
+                        {
+                            new WorkFlowActionSetting
+                            {
+                                Type = ActionType.VariableProcess,
+                                ActionConfig = new
+                                {
+                                    Method = UnitTestActionProcessor.Method,
+                                    Key = Guid.NewGuid(),
+                                    ResultSequence = new List<bool>{ true  }
+                                }
+                            }
+                        }
+                    },
+                    new WorkFlowConfigStep
+                    {
+                        Code = "after_group_2"
+                    },
+                    new WorkFlowConfigStep
+                    {
+                        Code = "end",
+                        IsEnd = true
+                    }
+                },
+                Flows = new List<WorkFlowConfigFlow>
+                {
+                    new WorkFlowConfigFlow
+                    {
+                        CurrentStepCode = "start",
+                        NextStepCode = "item_process",
+                        NextOn = FlowNextType.OnSuccess
+                    },
+                    new WorkFlowConfigFlow
+                    {
+                        CurrentStepCode = "item_process",
+                        NextStepCode = "after_group",
+                        NextOn = FlowNextType.OnGroupAllSuccess,
+                        GroupStartStepCode = "start"
+                    },
+                    new WorkFlowConfigFlow
+                    {
+                        CurrentStepCode = "after_group",
+                        NextStepCode = "after_group_2",
+                        NextOn = FlowNextType.OnSuccess
+                    },
+                    new WorkFlowConfigFlow
+                    {
+                        CurrentStepCode = "after_group_2",
+                        NextStepCode = "end",
+                        NextOn = FlowNextType.OnSuccess
+                    }
+                }
+            };
+            var data = new
+            {
+                orderId = "123",
+                merchantOrderId = "m123",
+                orderType = "A",
+                items = new List<dynamic>
+                {
+                    new { itemId = "item1", qty = 1 },
+                    new { itemId = "item2", qty = 2 }
+                }
+            };
+            var input = JsonConvert.DeserializeObject<Dictionary<string, object>>(
+                JsonConvert.SerializeObject(data)
+            );
+            #endregion
+
+            var startRes = _executionProvider.StartNew(new List<WorkFlowConfig> { workflow }, input).Result;
+            Common.ValidateOperationResultWithData(startRes);
+            var work = startRes.Data.FirstOrDefault();
+            Assert.IsNotNull(work);
+
+            var executeRes = _executionProvider.Execute(work, workflow, true).Result;
+            Common.ValidateOperationResultWithData(executeRes);
+            work = executeRes.Data;
+            Assert.IsNotNull(work);
+
+            var afterGroupStep = work.Steps.FirstOrDefault(x => x.Code == "after_group");
+            var successRes = _executionProvider.Success(work, afterGroupStep.Id, 0, new Dictionary<string, object> { }).Result;
+            Common.ValidateOperationResultWithData(successRes);
+
+            executeRes = _executionProvider.Execute(work, workflow, true).Result;
+            Common.ValidateOperationResultWithData(executeRes);
+            work = executeRes.Data;
+            Assert.IsNotNull(work);
+
+            var startStep = work.Steps.FirstOrDefault(x => x.Code == "start");
+            afterGroupStep = work.Steps.FirstOrDefault(x => x.Code == "after_group");
+            var afterGroup2Step = work.Steps.FirstOrDefault(x => x.Code == "after_group_2");
+
+            Assert.IsNotNull(startStep?.Arguments?.PublicArguments);
+            Assert.IsNotNull(afterGroupStep?.Arguments?.PublicArguments);
+            Assert.IsNotNull(afterGroup2Step?.Arguments?.PublicArguments);
+
+            //Assert.AreEqual($"[{startStep.Arguments.PublicArguments["input"]}]", afterGroupStep.Arguments.PublicArguments["input"]);
+            Assert.AreEqual(startStep.Arguments.PublicArguments["input"], afterGroup2Step.Arguments.PublicArguments["input"].Replace("\r", "").Replace("\n", ""));
         }
     }
 }

@@ -1,4 +1,5 @@
-﻿using Newtonsoft.Json;
+﻿using AWorkFlow2.Helps;
+using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -70,6 +71,7 @@ namespace AWorkFlow2.Models.Working
                 ActionType = actionType;
                 if (PrivateArguments != null)
                 {
+                    PrivateArguments["workingCopyId"] = workId;
                     PrivateArguments["workingStepId"] = stepId;
                 }
             }
@@ -167,6 +169,43 @@ namespace AWorkFlow2.Models.Working
         }
 
         /// <summary>
+        /// remove except keys
+        /// </summary>
+        /// <param name="keys"></param>
+        /// <param name="onPublic"></param>
+        /// <param name="onPrivate"></param>
+        public WorkingArguments FilterKeys(IEnumerable<string> keys, bool onPublic = true, bool onPrivate = true)
+        {
+            if (keys?.Any() != true)
+            {
+                return this;
+            }
+            if (onPublic)
+            {
+                FilterKeys(PublicArguments, keys);
+            }
+            if (onPrivate)
+            {
+                FilterKeys(PrivateArguments, keys);
+            }
+
+            return this;
+        }
+
+        private void FilterKeys(Dictionary<string, string> dic, IEnumerable<string> exceptKeys)
+        {
+            if (dic == null || exceptKeys?.Any() != true)
+            {
+                return;
+            }
+            var toRemoveKeys = dic.Keys.Except(exceptKeys).ToList();
+            foreach (var key in toRemoveKeys)
+            {
+                dic.Remove(key);
+            }
+        }
+
+        /// <summary>
         /// accept all changes include sub-items
         /// </summary>
         /// <param name="acceptAll"></param>
@@ -243,7 +282,17 @@ namespace AWorkFlow2.Models.Working
 
             if (intoList)
             {
-                return tmpDic.ToDictionary(kvp => kvp.Key, kvp => $"[{string.Join(",", kvp.Value)}]");
+                return tmpDic.ToDictionary(kvp => kvp.Key, kvp =>
+                {
+                    if (!kvp.Value.Any() || (JsonHelper.IsObject(kvp.Value[0]) || JsonHelper.IsArray(kvp.Value[0])))
+                    {
+                        return $"[{string.Join(",", kvp.Value)}]";
+                    }
+                    else
+                    {
+                        return $"[{string.Join(",", kvp.Value.Select(x => $"\"{x}\""))}]";
+                    }
+                });
             }
             else
             {

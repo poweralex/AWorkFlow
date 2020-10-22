@@ -43,7 +43,7 @@ namespace AWorkFlow2.Providers
                 actionExecuteResult.Output = new Dictionary<string, string>();
                 foreach (var kvp in action?.Output)
                 {
-                    actionExecuteResult.Output[kvp.Key] = argument.Format(kvp.Value);
+                    actionExecuteResult.Output[kvp.Key] = argument.Format(kvp.Value, true);
                 }
             }
 
